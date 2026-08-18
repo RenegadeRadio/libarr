@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
 class Base(DeclarativeBase):
@@ -30,6 +30,6 @@ def _set_sqlite_pragma(dbapi_connection: Any, _connection_record: Any) -> None:
     cursor.close()
 
 
-def session_factory(engine: Engine) -> sessionmaker:
+def session_factory(engine: Engine) -> sessionmaker[Session]:
     """Build a sessionmaker bound to the given engine."""
     return sessionmaker(bind=engine, expire_on_commit=False)
