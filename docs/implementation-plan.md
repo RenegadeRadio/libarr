@@ -8,8 +8,13 @@
 
 **Tech Stack:** Python 3.12 · FastAPI · SQLAlchemy 2 · SQLite (optional Postgres) · ARQ/Redis for the async worker · ebooklib for EPUB parsing · aiohttp for provider/indexer HTTP · Apprise for notifications · Vue 3 + Vite SPA (or plain server-rendered HTMX for MVP, see Open Questions).
 
----
+## Progress — 2026-08-19
 
+**Phase 0 (scaffold): COMPLETE** — repo `github.com/RenegadeRadio/libarr` (public), CI green (ruff/mypy/pytest/docker), Docker image boots and serves `/api/v1/health`, Vue 3 SPA shell builds.
+
+**Phase 1 (Libarr Lite): Tasks 1.1–1.6 COMPLETE; 1.7+ pending.** Shipped: media models + FTS5, filename parser, library scan (fast OPF-only EPUB extraction), matcher, OpenLibrary/GoogleBooks providers with stale-while-error cache, enrichment worker (genre facets). **56 tests passing.** Next up: Task 1.7/1.7b (REST API + genre/keyword search endpoint) → 1.8 OPDS → 1.9/1.10 reader+covers → 1.11 auth → 1.12 frontend → 1.13 notifications.
+
+---
 ## 1. Executive Summary — Why Build This Now
 
 **Readarr — the book app in the official *Arr family — was retired by the Servarr team on 2025-06-27.** The stated causes are a textbook case study in how media automation dies:
@@ -251,23 +256,23 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 
 ### Phase 0 — Scaffold (0.5–1 week)
 
-- [ ] **Task 0.1**: Init repo `libarr/` — `pyproject.toml` (uv), `src/libarr` layout, `ruff`/`mypy` config, `.gitignore`, README.
-- [ ] **Task 0.2**: `uv init` + `uv add fastapi uvicorn sqlalchemy alembic pydantic-settings ebooklib feedparser aiohttp arq apscheduler apprise httpx`; pin `python = ">=3.12,<3.13"`.
-- [ ] **Task 0.3**: `main.py` app factory with `/api/v1/health` returning `{"status":"ok","version":...}`; test: `pytest tests/test_health.py` → 200. Commit: `feat: scaffold fastapi app`.
-- [ ] **Task 0.4**: SQLAlchemy engine + session factory, WAL pragma, `alembic init`; empty migration applies cleanly. Test: `tests/test_db.py` round-trips a `settings` row. Commit.
-- [ ] **Task 0.5**: `config.py` (pydantic-settings): `data_dir`, `library_root`, `download_dir`, `redis_url`, `rss_interval`, `auth`. Defaults sensible for docker; env overrides.
-- [ ] **Task 0.6**: `docker/` — multi-stage Dockerfile, `docker-compose.yml` with **single `/data` volume** (hardlink law, §2.1) + redis; `docker-compose.dev.yml` with live reload. Commit: `feat: docker packaging`.
-- [ ] **Task 0.7**: GitHub Actions: `uv sync` + `ruff check` + `mypy` + `pytest` on push/PR. Test CI passes. Commit.
-- [ ] **Task 0.8**: SPA scaffold `web/` (Vite + Vue 3 + dark theme), empty shell routing, CI build. Commit.
+- [x] **Task 0.1**: Init repo `libarr/` — `pyproject.toml` (uv), `src/libarr` layout, `ruff`/`mypy` config, `.gitignore`, README.
+- [x] **Task 0.2**: `uv init` + `uv add fastapi uvicorn sqlalchemy alembic pydantic-settings ebooklib feedparser aiohttp arq apscheduler apprise httpx`; pin `python = ">=3.12,<3.13"`.
+- [x] **Task 0.3**: `main.py` app factory with `/api/v1/health` returning `{"status":"ok","version":...}`; test: `pytest tests/test_health.py` → 200. Commit: `feat: scaffold fastapi app`.
+- [x] **Task 0.4**: SQLAlchemy engine + session factory, WAL pragma, `alembic init`; empty migration applies cleanly. Test: `tests/test_db.py` round-trips a `settings` row. Commit.
+- [x] **Task 0.5**: `config.py` (pydantic-settings): `data_dir`, `library_root`, `download_dir`, `redis_url`, `rss_interval`, `auth`. Defaults sensible for docker; env overrides.
+- [x] **Task 0.6**: `docker/` — multi-stage Dockerfile, `docker-compose.yml` with **single `/data` volume** (hardlink law, §2.1) + redis; `docker-compose.dev.yml` with live reload. Commit: `feat: docker packaging`.
+- [x] **Task 0.7**: GitHub Actions: `uv sync` + `ruff check` + `mypy` + `pytest` on push/PR. Test CI passes. Commit.
+- [x] **Task 0.8**: SPA scaffold `web/` (Vite + Vue 3 + dark theme), empty shell routing, CI build. Commit.
 
 ### Phase 1 — Libarr Lite: library, metadata, serving (2–3 weeks)
 
-- [ ] **Task 1.1**: ORM models `Author`, `Book`, `Series`, `Edition`, `File`, `Subject` + `book_fts` FTS5 virtual table (§4.2) + alembic migration. Test: model CRUD + constraints + subject upsert.
-- [ ] **Task 1.2**: `library_scan.scan_folder()` — walk `library_root`, index files by extension, upsert minimal records, record `sha256`. Tests: tmp-dir fixture with 3 generated EPUBs (build via `ebooklib` helper, see `tests/fixtures/make_epub.py`), assert records + dedupe.
-- [ ] **Task 1.3**: `parser.py` book filename parser: regex rules for `Title - Author`, `Series #N - Title`, `Title (Year)`, ISBN-in-name; pure function + table-driven tests (reuse real-world release-name samples collected from tracker listings in `tests/fixtures/release_names.txt`).
-- [ ] **Task 1.4**: `metadata/providers/openlibrary.py` + `googlebooks.py` + `normalize.py` + `cache.py`. Tests with `respx`/`vcr` fixtures: normalize a real OL payload; cache hit/miss; 429 → backoff → stale-while-error.
-- [ ] **Task 1.5**: `metadata/matcher.py` — ISBN-exact → normalized-title+author (unicode-fold, strip punctuation) → FTS5 fallback; score threshold constants. Tests incl. "two editions, same work" merge and "same title, different author" non-merge.
-- [ ] **Task 1.6**: enrichment worker task: for each unenriched book, lookup by ISBN → fill description/**subjects (genres/keywords from OL `subjects` + Google `categories`)**/cover/series/year; covers extracted from EPUB OPF when provider cover missing. Tests with fixture payloads.
+- [x] **Task 1.1**: ORM models `Author`, `Book`, `Series`, `Edition`, `File`, `Subject` + `book_fts` FTS5 virtual table (§4.2) + alembic migration. Test: model CRUD + constraints + subject upsert.
+- [x] **Task 1.2**: `library_scan.scan_folder()` — walk `library_root`, index files by extension, upsert minimal records, record `sha256`. Tests: tmp-dir fixture with 3 generated EPUBs (build via `ebooklib` helper, see `tests/fixtures/make_epub.py`), assert records + dedupe.
+- [x] **Task 1.3**: `parser.py` book filename parser: regex rules for `Title - Author`, `Series #N - Title`, `Title (Year)`, ISBN-in-name; pure function + table-driven tests (reuse real-world release-name samples collected from tracker listings in `tests/fixtures/release_names.txt`).
+- [x] **Task 1.4**: `metadata/providers/openlibrary.py` + `googlebooks.py` + `normalize.py` + `cache.py`. Tests with `respx`/`vcr` fixtures: normalize a real OL payload; cache hit/miss; 429 → backoff → stale-while-error.
+- [x] **Task 1.5**: `metadata/matcher.py` — ISBN-exact → normalized-title+author (unicode-fold, strip punctuation) → FTS5 fallback; score threshold constants. Tests incl. "two editions, same work" merge and "same title, different author" non-merge.
+- [x] **Task 1.6**: enrichment worker task: for each unenriched book, lookup by ISBN → fill description/**subjects (genres/keywords from OL `subjects` + Google `categories`)**/cover/series/year; covers extracted from EPUB OPF when provider cover missing. Tests with fixture payloads.
 - [ ] **Task 1.7**: API: `GET /authors`, `GET /authors/{id}`, `GET /books`, `GET /books/{id}`, `GET /books/{id}/file`, `PATCH /books/{id}` (edit metadata). Tests: CRUD + pagination.
 - [ ] **Task 1.7b**: **Genre & keyword search**: `metadata/subjects.py` (normalize/slug/alias-thesaurus) + `book_fts` triggers + `GET /api/v1/search?q=&genre=&year=&language=` with facet counts. Tests: 3 fixture books → keyword hit, genre facet counts, alias match ("sci-fi" → Science fiction), empty-query 400.
 - [ ] **Task 1.8**: `library/opds.py` — OPDS 1.2 root + by-author + search + acquisition entries (`application/epub+zip`); OPDS 2.0 JSON in Phase 2. Tests: parse generated feed, assert required Atom namespaces/links.

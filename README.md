@@ -4,9 +4,11 @@ Self-hosted, *Arr-style eBook automation platform: monitor authors and genres,
 search indexers, download, import, organize, and serve your library via OPDS
 and a built-in reader.
 
-> **Status: Phase 0 (scaffold) — not functional yet.** See
-> `.hermes/plans/2026-08-19_011209-libarr-ebook-platform.md` for the full
-> implementation plan.
+> **Status: Phase 1 in progress (2026-08-19).** Library engine complete — scan →
+> metadata enrichment → searchable FTS index with genre facets; **56 tests
+> passing** (pytest, ruff + mypy strict clean). Next: REST API + genre/keyword
+> search endpoint, OPDS catalog, reader, auth. See
+> `docs/implementation-plan.md` for the full plan with task checkboxes.
 
 ## Layout
 
