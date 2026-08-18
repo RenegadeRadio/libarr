@@ -20,7 +20,8 @@ from libarr.db import Base
 
 
 def _now() -> datetime:
-    return datetime.now(UTC)
+    # Naive UTC: SQLite returns naive datetimes; keep everything consistent.
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Author(Base):
@@ -137,4 +138,25 @@ class Setting(Base):
     value: Mapped[str] = mapped_column(String(4096), nullable=False)
 
 
-__all__ = ["Author", "Book", "Edition", "File", "Series", "Setting", "Subject"]
+class MetadataCache(Base):
+    """Local cache of provider responses — the anti-Readarr resilience layer.
+
+    Every external metadata response is stored here (plan §2.3): fresh within
+    TTL, stale-while-error when the provider is down, and dump-importable so
+    the app keeps working with zero internet access.
+    """
+
+    __tablename__ = "metadata_cache"
+
+    provider: Mapped[str] = mapped_column(String(32), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32), primary_key=True)
+    key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    etag: Mapped[str | None] = mapped_column(String(128))
+
+
+__all__ = [
+    "Author", "Book", "Edition", "File", "MetadataCache", "Series",
+    "Setting", "Subject",
+]
