@@ -1,0 +1,34 @@
+# Dev compose: editable install + bind-mounted src for live reload.
+services:
+  libarr:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        SYNC_ARGS: "--frozen --no-dev"
+    container_name: libarr-dev
+    command: uvicorn libarr.main:app --host 0.0.0.0 --port 8787 --reload
+    ports:
+      - "8787:8787"
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ../src:/app/src
+      - ./data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: libarr-dev-redis
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped

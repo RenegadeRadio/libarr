@@ -1,0 +1,44 @@
+# Libarr + Redis. The single ./data:/data volume keeps downloads and library on
+# the same filesystem so future imports can hardlink instead of copy (the *Arr
+# hardlink law — see plan §2.1).
+services:
+  libarr:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: libarr
+    ports:
+      - "8787:8787"
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ./data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8787/api/v1/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: libarr-redis
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
