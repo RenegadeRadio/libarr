@@ -17,6 +17,8 @@ from libarr.api.schemas import (
     BookDetail,
     BookOut,
     BookPatch,
+    ProgressOut,
+    ProgressPut,
     SearchResult,
 )
 from libarr.api.serializers import (
@@ -26,6 +28,7 @@ from libarr.api.serializers import (
     serialize_book_detail,
 )
 from libarr.fts import reindex_book
+from libarr.library.covers import cover_media_type, resolve_cover
 from libarr.library.opds import (
     CATALOG_TYPE,
     MEDIA_TYPES,
@@ -40,7 +43,7 @@ from libarr.library.opds import (
 from libarr.library.search import search_books
 from libarr.metadata.matcher import STOPWORDS
 from libarr.metadata.normalize import normalize_text
-from libarr.models import Author, Book, Edition
+from libarr.models import Author, Book, Edition, ReadingProgress
 
 router = APIRouter()
 
@@ -136,6 +139,67 @@ def book_file(book_id: int, session: Annotated[Session, Depends(get_session)]) -
         media_type=MEDIA_TYPES.get(file_row.format.lower()),
         filename=path.name,
     )
+
+
+@router.get("/books/{book_id}/cover")
+@router.get("/covers/{book_id}")
+def book_cover(
+    book_id: int, session: Annotated[Session, Depends(get_session)]
+) -> FileResponse:
+    book = session.get(Book, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    cover = resolve_cover(session, book)
+    if cover is None:
+        raise HTTPException(status_code=404, detail="No cover available")
+    return FileResponse(cover, media_type=cover_media_type(cover))
+
+
+@router.get("/books/{book_id}/progress", response_model=ProgressOut)
+def get_progress(
+    book_id: int,
+    session: Annotated[Session, Depends(get_session)],
+    profile: str = Query("default", min_length=1, max_length=64),
+) -> dict[str, Any]:
+    book = session.get(Book, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    row = session.get(ReadingProgress, (book_id, profile))
+    if row is None:
+        raise HTTPException(status_code=404, detail="No progress recorded")
+    return {
+        "book_id": row.book_id,
+        "profile": row.profile,
+        "position": row.position,
+        "location": row.location,
+        "updated_at": row.updated_at,
+    }
+
+
+@router.put("/books/{book_id}/progress", response_model=ProgressOut)
+def put_progress(
+    book_id: int,
+    body: ProgressPut,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    book = session.get(Book, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    row = session.get(ReadingProgress, (book_id, body.profile))
+    if row is None:
+        row = ReadingProgress(book_id=book_id, profile=body.profile)
+        session.add(row)
+    row.position = body.position
+    row.location = body.location
+    session.commit()
+    session.refresh(row)
+    return {
+        "book_id": row.book_id,
+        "profile": row.profile,
+        "position": row.position,
+        "location": row.location,
+        "updated_at": row.updated_at,
+    }
 
 
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------

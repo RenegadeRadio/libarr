@@ -138,6 +138,24 @@ class Setting(Base):
     value: Mapped[str] = mapped_column(String(4096), nullable=False)
 
 
+class ReadingProgress(Base):
+    """Per-profile reading position for a book (plan Task 1.9).
+
+    Keyed by (book_id, profile): 'profile' is a client-supplied device/user
+    name until multi-user auth lands (Phase 4).
+    """
+
+    __tablename__ = "reading_progress"
+
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), primary_key=True)
+    profile: Mapped[str] = mapped_column(String(64), primary_key=True)
+    position: Mapped[float] = mapped_column(nullable=False)  # 0.0–1.0
+    location: Mapped[str | None] = mapped_column(String(512))  # e.g. epubcfi(...)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_now, onupdate=_now, nullable=False
+    )
+
+
 class MetadataCache(Base):
     """Local cache of provider responses — the anti-Readarr resilience layer.
 
@@ -157,6 +175,6 @@ class MetadataCache(Base):
 
 
 __all__ = [
-    "Author", "Book", "Edition", "File", "MetadataCache", "Series",
-    "Setting", "Subject",
+    "Author", "Book", "Edition", "File", "MetadataCache", "ReadingProgress",
+    "Series", "Setting", "Subject",
 ]

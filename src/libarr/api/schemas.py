@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SubjectOut(BaseModel):
@@ -86,3 +86,17 @@ class SearchResult(BaseModel):
     total: int
     facets: list[Facet]
     results: list[BookOut]
+
+
+class ProgressPut(BaseModel):
+    profile: str = Field(min_length=1, max_length=64)
+    position: float = Field(ge=0.0, le=1.0)
+    location: str | None = None
+
+
+class ProgressOut(BaseModel):
+    book_id: int
+    profile: str
+    position: float
+    location: str | None
+    updated_at: datetime

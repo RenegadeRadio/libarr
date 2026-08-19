@@ -275,9 +275,9 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 - [x] **Task 1.6**: enrichment worker task: for each unenriched book, lookup by ISBN → fill description/**subjects (genres/keywords from OL `subjects` + Google `categories`)**/cover/series/year; covers extracted from EPUB OPF when provider cover missing. Tests with fixture payloads.
 - [x] **Task 1.7**: API: `GET /authors`, `GET /authors/{id}`, `GET /books`, `GET /books/{id}`, `GET /books/{id}/file`, `PATCH /books/{id}` (edit metadata). Tests: CRUD + pagination.
 - [x] **Task 1.7b**: **Genre & keyword search**: `metadata/subjects.py` (normalize/slug/alias-thesaurus) + `book_fts` triggers + `GET /api/v1/search?q=&genre=&year=&language=` with facet counts. Tests: 3 fixture books → keyword hit, genre facet counts, alias match ("sci-fi" → Science fiction), empty-query 400.
-- [ ] **Task 1.8**: `library/opds.py` — OPDS 1.2 root + by-author + search + acquisition entries (`application/epub+zip`); OPDS 2.0 JSON in Phase 2. Tests: parse generated feed, assert required Atom namespaces/links.
-- [ ] **Task 1.9**: `library/reader.py` — stream EPUB (with `Content-Disposition`), reading-progress endpoint (position per user), PDF streaming. Tests: range/simple GETs.
-- [ ] **Task 1.10**: `library/covers.py` — cover endpoint, local cover cache dir, EPUB cover extraction. Test: generated EPUB → cover bytes returned.
+- [x] **Task 1.8**: `library/opds.py` — OPDS 1.2 root + by-author + search + acquisition entries (`application/epub+zip`); OPDS 2.0 JSON in Phase 2. Tests: parse generated feed, assert required Atom namespaces/links.
+- [x] **Task 1.9**: `library/reader.py` — stream EPUB (with `Content-Disposition`), reading-progress endpoint (position per user), PDF streaming. Tests: range/simple GETs.
+- [x] **Task 1.10**: `library/covers.py` — cover endpoint, local cover cache dir, EPUB cover extraction. Test: generated EPUB → cover bytes returned.
 - [ ] **Task 1.11**: Auth: forced login (hash `argon2` via `pwdlib`), first-run admin bootstrap, API-key auth for integrations, CSRF-safe cookie sessions. Tests: unauthenticated → 401; bootstrap flow.
 - [ ] **Task 1.12**: Frontend: library grid + book detail + edit metadata + reader route + OPDS links visible + **search bar with genre/keyword query + genre facet browse**. Manual E2E: KOReader/Kobo browser hits OPDS, downloads a book. Commit.
 - [ ] **Task 1.13**: Notifications wiring (Apprise) for import/enrich events. Test: fake apprise transport records payload.
