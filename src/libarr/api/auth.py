@@ -16,6 +16,7 @@ from datetime import timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pwdlib import PasswordHash
@@ -169,6 +170,82 @@ def login(
         samesite="lax",
     )
     return {"status": "ok"}
+
+
+@router.get("/auth/oidc/login")
+def oidc_login(
+    request: Request,
+    response: Response,
+    session: Annotated[Session, Depends(get_session)],
+) -> RedirectResponse:
+    """Start the OIDC authorization-code flow (redirects to the IdP)."""
+    from libarr.oidc import OidcError, build_authorize_url
+
+    settings = Settings()
+    callback_url = str(request.base_url).rstrip("/") + "/api/v1/auth/oidc/callback"
+    try:
+        authorize_url, state = build_authorize_url(settings, callback_url)
+    except OidcError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    # The unsigned state rides a cookie so the callback can verify the flow
+    # started here (the URL carries the HMAC-signed twin). The cookie must go
+    # on the returned redirect, not the injected response (which is discarded).
+    redirect = RedirectResponse(authorize_url, status_code=302)
+    redirect.set_cookie("oidc_state", state, httponly=True, max_age=600)
+    return redirect
+
+
+@router.get("/auth/oidc/callback")
+def oidc_callback(
+    request: Request,
+    response: Response,
+    session: Annotated[Session, Depends(get_session)],
+    code: str = "",
+    state: str = "",
+) -> RedirectResponse:
+    """Complete the flow: exchange code → userinfo → issue a Libarr session."""
+    from libarr.oidc import OidcError, exchange_and_userinfo, verify_state
+
+    settings = Settings()
+    expected = request.cookies.get("oidc_state")
+    if not expected or not verify_state(settings.oidc_client_secret or "libarr", state):
+        raise HTTPException(status_code=400, detail="Invalid OIDC state")
+    callback_url = str(request.base_url).rstrip("/") + "/api/v1/auth/oidc/callback"
+    try:
+        info = exchange_and_userinfo(settings, callback_url, code)
+    except OidcError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    sub = str(info.get("sub") or "")
+    if not sub:
+        raise HTTPException(status_code=400, detail="OIDC userinfo missing 'sub'")
+    email = str(info.get("email") or f"oidc-{sub}")
+    user = session.scalars(select(User).where(User.oidc_sub == sub)).first()
+    if user is None:
+        user = session.scalars(select(User).where(User.username == email)).first()
+    if user is None:
+        user = User(
+            username=email,
+            password_hash=hash_password(
+                secrets.token_urlsafe(24)
+            ),  # OIDC users never log in with a password
+            role="user",
+            oidc_sub=sub,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    token = create_session_token(user.id)
+    redirect = RedirectResponse("/", status_code=302)
+    redirect.set_cookie(
+        COOKIE_NAME,
+        token,
+        httponly=True,
+        max_age=int(SESSION_TTL.total_seconds()),
+        samesite="lax",
+    )
+    redirect.delete_cookie("oidc_state")
+    return redirect
 
 
 @router.post("/auth/logout")

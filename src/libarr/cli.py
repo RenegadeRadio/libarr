@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sys
 from pathlib import Path
 
 from libarr.config import Settings
 from libarr.db import make_engine, session_factory
 from libarr.metadata.dumps import DUMP_KINDS, ingest_dump
+from libarr.scheduler import run_cycles, scheduler_loop
 
 
 def _infer_kind(path: Path) -> str | None:
@@ -48,7 +50,43 @@ def main(argv: list[str] | None = None) -> int:
         help="record kind (default: inferred from the filename)",
     )
 
+    worker = subparsers.add_parser(
+        "worker",
+        help=(
+            "Background jobs process (Phase 4 modular split): RSS, downloads, discovery, conversion"
+        ),
+    )
+    worker.add_argument(
+        "--once",
+        action="store_true",
+        help="run a single cycle and exit (cron-friendly) instead of looping",
+    )
+    worker.add_argument(
+        "--interval",
+        type=int,
+        help="cycle interval in seconds (default: the LIBARR_SCHEDULER_INTERVAL_SECONDS setting)",
+    )
+
     args = parser.parse_args(argv)
+
+    if args.command == "worker":
+        settings = Settings()
+        _ensure_migrated(settings.database_url)
+        engine = make_engine(settings.database_url)
+        if args.once:
+            stats = run_cycles(engine)
+            print(f"cycle done: {stats}")
+            engine.dispose()
+            return 0
+        interval = float(args.interval or settings.scheduler_interval_seconds)
+        asyncio.run(
+            scheduler_loop(
+                engine,
+                interval_seconds=interval,
+                jitter_seconds=float(settings.scheduler_jitter_seconds),
+            )
+        )
+        return 0
 
     if args.command == "metadata-import":
         kind = args.kind or _infer_kind(args.dump)

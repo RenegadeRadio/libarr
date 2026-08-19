@@ -327,6 +327,7 @@ class User(Base):
     notify_events: Mapped[str] = mapped_column(
         String(512), default='["import","search"]', nullable=False
     )
+    oidc_sub: Mapped[str | None] = mapped_column(String(128), unique=True)
     role: Mapped[str] = mapped_column(String(16), default="user", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
 

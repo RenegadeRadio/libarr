@@ -53,3 +53,8 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_from: str = ""
+
+    # OIDC single sign-on (Phase 4): discovery issuer + client credentials.
+    oidc_issuer: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
