@@ -332,12 +332,12 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 - [ ] Failure drills: tests that simulate provider-down (stale-while-error serves last-known payloads), provider-shape-change (schema drift tolerated via `metadata_json`), rate-limit storms.
 
 ### Phase 3 — Ecosystem polish (3–4 weeks)
-- Request UI (Overseerr-style: "request book" → auto-add+search) with per-user limits; import lists (Open Library shelf / StoryGraph / Goodreads CSV export; Prowlarr-style "import" flow).
-- Conversion worker: `ebook-convert` subprocess queue (EPUB→AZW3/KEPUB/PDF per device targets), configurable per format, disk guards.
-- Kobo KEPUB pass (kepubify subprocess) + Send-to-Kindle email + KOReader progress sync (koreader-sync-server protocol, self-hosted option).
-- Calendar (upcoming releases from metadata providers for monitored authors) — the Readarr "calendar" feature, from OL `recent`/author feeds.
-- Unpack archives (zip/rar torrent payloads) before import (unpackerr-equivalent, in-worker).
-- Notifications for search/failed-import; per-user notification prefs.
+- [x] Request UI (Overseerr-style: "request book" → auto-add+search) with per-user limits; import lists (Open Library shelf / StoryGraph / Goodreads CSV export; Prowlarr-style "import" flow). — Request flow shipped (POST /requests: ISBN→provider or title→OL search, auto-add monitored, search-now). Per-user limits + external import lists still pending.
+- [x] Conversion worker: `ebook-convert` subprocess queue (EPUB→AZW3/KEPUB/PDF per device targets), configurable per format, disk guards. — `conversion.py` + `conversion_jobs` table + POST /books/{id}/convert + GET /conversions + scheduler cycle; disk guard (500MB cap), GPL-clean subprocess.
+- [ ] Kobo KEPUB pass (kepubify subprocess) + Send-to-Kindle email + KOReader progress sync (koreader-sync-server protocol, self-hosted option). — KEPUB accepted as a conversion target already; device delivery pending.
+- [ ] Calendar (upcoming releases from metadata providers for monitored authors) — the Readarr "calendar" feature, from OL `recent`/author feeds.
+- [x] Unpack archives (zip/rar torrent payloads) before import (unpackerr-equivalent, in-worker). — zip/tar with zip-slip protection in the import locate step; rar pending unrar binary.
+- [x] Notifications for search/failed-import; per-user notification prefs. — search-now outcomes notify per `users.notify_events` prefs; import/fail events already notify globally.
 
 ### Phase 4 — Scale & compat (ongoing)
 - Calibre `metadata.db` compatibility mode: detect Calibre layout; read DB for scan; optional write-through (add/update records, cover thumbnails); `calibredb` CLI bridge where safer.
