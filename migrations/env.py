@@ -1,5 +1,6 @@
 """Alembic migration environment — wired to Libarr's Base.metadata."""
 
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -10,8 +11,13 @@ from libarr.db import Base
 
 config = context.config
 
+# Docker/CI: prefer the LIBARR_DATABASE_URL environment variable when set.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+env_url = os.environ.get("LIBARR_DATABASE_URL")
+if env_url:
+    config.set_main_option("sqlalchemy.url", env_url)
 
 target_metadata = Base.metadata
 

@@ -1,22 +1,25 @@
-# Libarr + Redis. The single ./data:/data volume keeps downloads and library on
-# the same filesystem so future imports can hardlink instead of copy (the *Arr
-# hardlink law — see plan §2.1).
+# Libarr: API + SPA in one container, background jobs in a worker container.
+# The single ./data:/data volume keeps the database, downloads and library on
+# the same filesystem so imports hardlink instead of copy (the *Arr hardlink
+# law). Set PUID/PGID to your host user ids so /data files are yours.
 services:
   libarr:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    image: libarr:latest
     container_name: libarr
     ports:
       - "8787:8787"
     environment:
       - PUID=1000
       - PGID=1000
+      # Uncomment to harden:
+      # - LIBARR_SECRET_KEY=change-me
+      # - LIBARR_APPRISE_URLS=tgram://bot:chatid
+      # - LIBARR_SCHEDULER_ENABLED=false   # if the worker service handles jobs
     volumes:
       - ./data:/data
-    depends_on:
-      redis:
-        condition: service_healthy
     healthcheck:
       test:
         [
@@ -28,17 +31,21 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 20s
     restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    container_name: libarr-redis
+  # Background jobs process (Phase 4 modular split): RSS sync, download watch,
+  # discovery lists, conversions. Shares the same /data volume.
+  worker:
+    image: libarr:latest
+    container_name: libarr-worker
+    command: ["libarr", "worker", "--interval", "300"]
+    environment:
+      - PUID=1000
+      - PGID=1000
     volumes:
-      - ./data/redis:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      - ./data:/data
+    depends_on:
+      libarr:
+        condition: service_healthy
     restart: unless-stopped

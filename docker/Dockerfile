@@ -1,27 +1,32 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build: uv resolves deps in the builder, runtime ships only the venv.
+# Multi-stage: the Vue SPA is built first, uv resolves Python deps in the
+# builder, and the runtime ships only the venv + app + built frontend.
+FROM node:22-bookworm-slim AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY README.md ./
 COPY src ./src
-# Production: bake the package in (--no-editable). Dev compose overrides with editable
-# so ./src can be bind-mounted for --reload.
-ARG SYNC_ARGS="--frozen --no-dev --no-editable"
-RUN uv sync $SYNC_ARGS
+RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.12-slim-bookworm AS runtime
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
+COPY migrations ./migrations
+COPY alembic.ini ./
+COPY --from=web /web/dist /app/web/dist
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 ENV PATH="/app/.venv/bin:$PATH" \
     LIBARR_DATABASE_URL="sqlite:////data/libarr.db" \
-    LIBARR_DATA_DIR="/data" \
-    LIBARR_LIBRARY_ROOT="/data/books" \
-    LIBARR_DOWNLOAD_DIR="/data/downloads" \
-    LIBARR_REDIS_URL="redis://redis:6379"
+    LIBARR_CONVERSION_OUT_DIR="/data/converted"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gosu \

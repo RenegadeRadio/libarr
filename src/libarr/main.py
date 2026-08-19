@@ -16,6 +16,7 @@ from libarr.config import Settings
 from libarr.db import make_engine
 from libarr.koreader import router as koreader_router
 from libarr.scheduler import scheduler_loop
+from libarr.spa import mount_spa
 
 
 @asynccontextmanager
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok", "version": __version__}
 
+    mount_spa(app)  # serve the built frontend when web/dist exists
     return app
 
 
