@@ -6,12 +6,12 @@ from typing import cast
 
 from libarr.indexers.base import IndexerClient, IndexerError
 from libarr.indexers.gutenberg import GutenbergIndexer
-from libarr.indexers.standardebooks import StandardEbooksIndexer
+from libarr.indexers.openlibrary import OpenLibraryIndexer
 from libarr.indexers.torznab import TorznabIndexer
 from libarr.models import Indexer
 
 _CLIENTS = {
-    client.kind: client for client in (TorznabIndexer, GutenbergIndexer, StandardEbooksIndexer)
+    client.kind: client for client in (TorznabIndexer, GutenbergIndexer, OpenLibraryIndexer)
 }
 
 SUPPORTED_KINDS = sorted(_CLIENTS)

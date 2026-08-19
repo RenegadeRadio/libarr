@@ -6,8 +6,8 @@ from httpx import Response
 
 from libarr.indexers.base import IndexerError, detect_format
 from libarr.indexers.gutenberg import GutenbergIndexer
+from libarr.indexers.openlibrary import OpenLibraryIndexer
 from libarr.indexers.registry import build_indexer
-from libarr.indexers.standardebooks import StandardEbooksIndexer
 from libarr.indexers.torznab import TorznabIndexer
 from libarr.models import Indexer
 
@@ -139,6 +139,33 @@ GUTENBERG_JSON = {
     ],
 }
 
+# The real official endpoint shape: [query, titles, authors, links, …] with a
+# "Displaying results" header row at index 0 (captured live, 2026-08-19).
+GUTENBERG_LEGACY_JSON = [
+    "alice",
+    ["Displaying results 1-25", "Alice's Adventures in Wonderland", "A Romance of Billy-Goat Hill"],
+    [None, "Carroll, Lewis", "Alice Caldwell Hegan Rice"],
+    [None, "/ebooks/11.json", "/ebooks/6635.json"],
+]
+
+
+@respx.mock
+def test_gutenberg_search_parses_legacy_array():
+    respx.get(url__startswith="https://www.gutenberg.org/ebooks/search/").mock(
+        return_value=Response(200, json=GUTENBERG_LEGACY_JSON)
+    )
+    idx = GutenbergIndexer(name="Project Gutenberg")
+
+    releases = idx.search("alice")
+
+    assert len(releases) == 2
+    r = releases[0]
+    assert r.title == "Alice's Adventures in Wonderland"
+    assert r.author == "Carroll, Lewis"
+    assert r.download_url == "https://www.gutenberg.org/ebooks/11.epub3.images"
+    assert r.guid == "gutenberg:11"
+    assert r.format == "EPUB"
+
 
 @respx.mock
 def test_gutenberg_search_parses_releases():
@@ -159,36 +186,36 @@ def test_gutenberg_search_parses_releases():
     assert r.isbn is None
 
 
-SE_OPDS = """<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog">
-  <title>Standard Ebooks</title>
-  <entry>
-    <title>Dune</title>
-    <id>https://standardebooks.org/ebooks/frank-herbert/dune</id>
-    <updated>2026-01-01T00:00:00Z</updated>
-    <author><name>Frank Herbert</name></author>
-    <dc:language>en-US</dc:language>
-    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip"
-          href="https://standardebooks.org/ebooks/frank-herbert/dune/downloads/frank-herbert_dune.epub"/>
-  </entry>
-</feed>"""
+OL_SEARCH_JSON = {
+    "numFound": 1,
+    "docs": [
+        {
+            "key": "/works/OL123W",
+            "title": "Alice's Adventures in Wonderland",
+            "author_name": ["Lewis Carroll"],
+            "first_publish_year": 1865,
+            "ia": ["alicesadventures0000unse_v7d2"],
+        }
+    ],
+}
 
 
 @respx.mock
-def test_standardebooks_search_parses_releases():
-    respx.get(url__startswith="https://standardebooks.org/opds/search").mock(
-        return_value=Response(200, text=SE_OPDS)
+def test_openlibrary_search_parses_releases():
+    respx.get(url__startswith="https://openlibrary.org/search.json").mock(
+        return_value=Response(200, json=OL_SEARCH_JSON)
     )
-    idx = StandardEbooksIndexer(name="Standard Ebooks")
+    idx = OpenLibraryIndexer(name="Open Library")
 
-    releases = idx.search("dune")
+    releases = idx.search("alice")
 
     assert len(releases) == 1
     r = releases[0]
-    assert r.title == "Dune"
-    assert r.author == "Frank Herbert"
+    assert r.title == "Alice's Adventures in Wonderland"
+    assert r.author == "Lewis Carroll"
+    assert r.year == 1865
     assert r.download_url == (
-        "https://standardebooks.org/ebooks/frank-herbert/dune/downloads/frank-herbert_dune.epub"
+        "https://archive.org/download/alicesadventures0000unse_v7d2/alicesadventures0000unse_v7d2.epub"
     )
     assert r.format == "EPUB"
 
@@ -204,8 +231,8 @@ def test_registry_builds_clients():
     gutenberg = build_indexer(Indexer(name="PG", kind="gutenberg"))
     assert isinstance(gutenberg, GutenbergIndexer)
 
-    se = build_indexer(Indexer(name="SE", kind="standardebooks"))
-    assert isinstance(se, StandardEbooksIndexer)
+    ol = build_indexer(Indexer(name="OL", kind="openlibrary"))
+    assert isinstance(ol, OpenLibraryIndexer)
 
 
 def test_registry_rejects_unknown_kind():
