@@ -148,6 +148,45 @@ def test_handle_author_query(client, db, monkeypatch):
     assert any(s["title"] == "The Left Hand of Darkness" for s in body["suggestions"])
 
 
+@respx.mock
+def test_handle_similar_uses_top_themes_with_fallback(client, db, monkeypatch):
+    """Long theme lists are truncated; empty results retry with theme #1."""
+    client, db = client
+    monkeypatch.delenv("LIBARR_CHAT_API_KEY", raising=False)
+
+    calls = []
+
+    def _handler(request):
+        calls.append(request.url.params.get("q"))
+        if len(calls) == 1:
+            return Response(200, json={"numFound": 0, "docs": []})
+        return Response(
+            200,
+            json={
+                "numFound": 1,
+                "docs": [
+                    {
+                        "key": "/works/OL1W",
+                        "title": "The Quiet American",
+                        "author_name": ["Graham Greene"],
+                        "first_publish_year": 1955,
+                        "subject": ["Conspiracy"],
+                    },
+                ],
+            },
+        )
+
+    respx.get(url__startswith="https://openlibrary.org/search.json").mock(side_effect=_handler)
+
+    resp = client.post("/api/v1/chat", json={"message": "similar to rubicon"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(calls) == 2  # full themes → single-theme fallback
+    assert "conspiracy" in calls[0]
+    assert "conspiracy" in calls[1]
+    assert body["suggestions"]
+
+
 # --- LLM-backed path ---------------------------------------------------------------
 
 

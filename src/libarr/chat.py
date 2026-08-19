@@ -220,7 +220,11 @@ def handle_message(session: Session, message: str) -> dict[str, Any]:
     if intent.kind == "author" and intent.query:
         works = search_works(session, q=f"author:{intent.query}", limit=limit)
     elif intent.themes:
-        works = search_works(session, q=" ".join(intent.themes), limit=limit)
+        # Keep the query tight — OL keyword search degrades with long phrases.
+        query = " ".join(intent.themes[:3])
+        works = search_works(session, q=query, limit=limit)
+        if not works and len(intent.themes) > 1:
+            works = search_works(session, q=intent.themes[0], limit=limit)
     elif intent.genre:
         works = search_works(
             session,
