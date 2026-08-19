@@ -10,6 +10,8 @@
 
 ## Progress — 2026-08-19
 
+**Docker (production): LIVE-VERIFIED (2026-08-19).** Multi-stage image (node build → uv `--no-editable` → slim runtime) with the SPA served by FastAPI (`web/dist` mount + client-side fallback), migrations on boot (entrypoint + `LIBARR_DATABASE_URL`-aware alembic env), linuxserver-style PUID/PGID, and a compose with API + worker containers sharing one `/data` volume (hardlink law). Verified: health, SPA, bootstrap, login, indexer CRUD, RSS sync, worker cycles, shared DB, steady-state restarts. Non-editable-install path resolution fixed (SPA_DIST + migrations dir env overrides).
+
 **Phase 0 (scaffold): COMPLETE** — repo `github.com/RenegadeRadio/libarr` (public), CI green (ruff/mypy/pytest/docker), Docker image boots and serves `/api/v1/health`, Vue 3 SPA shell builds.
 
 **Phase 1 (Libarr Lite): COMPLETE (2026-08-19).** All 13 tasks shipped: models+FTS5, parser, scan, matcher, providers (3-hop OL resolution) with stale-while-error cache, enrichment, REST API, genre/keyword search with facets, OPDS 1.2, reader/progress/covers, forced auth (cookie/API-key/Basic), Vue 3 frontend (login, grid, search UI), Apprise notifications. **91 tests passing** + headless-Chromium UI smoke test (`scripts/ui-smoke.mjs`). Live-verified end-to-end against real Open Library data.

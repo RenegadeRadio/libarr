@@ -39,3 +39,20 @@ Requires [uv](https://docs.astral.sh/uv/). The app listens on port **8787**
 Operational extras: `libarr metadata-import --dump ol_dump_works.txt` (offline
 metadata mirror), `LIBARR_SCHEDULER_ENABLED=false` to disable background cycles,
 `LIBARR_APPRISE_URLS` for notifications.
+
+## Docker (production)
+
+```bash
+cd docker && docker compose up -d --build
+```
+
+Two containers sharing one `/data` volume (database + library + downloads on a
+single filesystem so imports hardlink instead of copy):
+
+- **libarr** — API + the built Vue SPA on `:8787` (migrations run on boot)
+- **worker** — background jobs (`libarr worker --interval 300`): RSS sync,
+  download watch, discovery lists, conversions
+
+Set `PUID`/`PGID` to your host user ids in `docker-compose.yml` so the
+container's files are yours. First run: open `http://localhost:8787` and the
+app will prompt you to create the admin user.
