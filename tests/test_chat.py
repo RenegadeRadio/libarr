@@ -1,5 +1,6 @@
 """Phase 4.5 — the chat assistant: natural language → discovery actions."""
 
+import pytest
 import respx
 from httpx import Response
 
@@ -50,6 +51,38 @@ def test_show_themes_knowledge_base():
 
     assert "espionage" in show_themes("rubicon")
     assert "conspiracy" in show_themes("rabbithole")
+
+
+def test_knowledge_base_is_complete_and_lowercase():
+    from libarr.chat import SHOW_THEMES
+
+    assert len(SHOW_THEMES) >= 100
+    for name, themes in SHOW_THEMES.items():
+        assert themes, f"{name} has no themes"
+        assert name == name.lower(), f"{name} not lowercase"
+        for theme in themes:
+            assert theme == theme.lower(), f"{name}: theme '{theme}' not lowercase"
+
+
+@pytest.mark.parametrize(
+    ("show", "expected"),
+    [
+        ("severance", "dystopia"),
+        ("battlestar galactica", "space opera"),
+        ("game of thrones", "epic fantasy"),
+        ("the crown", "royal family"),
+        ("peaky blinders", "gangsters"),
+        ("breaking bad", "moral descent"),
+        ("the last of us", "post-apocalyptic"),
+        ("ted lasso", "optimism"),
+        ("chernobyl", "disaster"),
+        ("twin peaks", "surrealism"),
+    ],
+)
+def test_knowledge_base_spot_checks(show, expected):
+    from libarr.chat import show_themes
+
+    assert expected in show_themes(show), f"{show} missing theme {expected}"
 
 
 # --- chat handling (heuristic path, no API key) ----------------------------------
