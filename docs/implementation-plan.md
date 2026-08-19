@@ -335,7 +335,7 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 - [x] Request UI (Overseerr-style: "request book" → auto-add+search) with per-user limits; import lists (Open Library shelf / StoryGraph / Goodreads CSV export; Prowlarr-style "import" flow). — Request flow shipped (POST /requests: ISBN→provider or title→OL search, auto-add monitored, search-now). Per-user limits + external import lists still pending.
 - [x] Conversion worker: `ebook-convert` subprocess queue (EPUB→AZW3/KEPUB/PDF per device targets), configurable per format, disk guards. — `conversion.py` + `conversion_jobs` table + POST /books/{id}/convert + GET /conversions + scheduler cycle; disk guard (500MB cap), GPL-clean subprocess.
 - [ ] Kobo KEPUB pass (kepubify subprocess) + Send-to-Kindle email + KOReader progress sync (koreader-sync-server protocol, self-hosted option). — KEPUB accepted as a conversion target already; device delivery pending.
-- [ ] Calendar (upcoming releases from metadata providers for monitored authors) — the Readarr "calendar" feature, from OL `recent`/author feeds.
+- [x] Calendar (upcoming releases for monitored authors) — `calendar.py` from OL author search (year granularity, honest about OL's data), GET /calendar + Calendar UI.
 - [x] Unpack archives (zip/rar torrent payloads) before import (unpackerr-equivalent, in-worker). — zip/tar with zip-slip protection in the import locate step; rar pending unrar binary.
 - [x] Notifications for search/failed-import; per-user notification prefs. — search-now outcomes notify per `users.notify_events` prefs; import/fail events already notify globally.
 
