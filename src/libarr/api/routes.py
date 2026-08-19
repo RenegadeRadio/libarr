@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from libarr.acquisition.import_pipeline import default_import_hook
 from libarr.acquisition.wanted import wanted_cutoff, wanted_missing
-from libarr.api.auth import require_user
+from libarr.api.auth import require_admin, require_user
 from libarr.api.deps import get_session
 from libarr.api.schemas import (
     AuthorDetail,
@@ -27,6 +27,7 @@ from libarr.api.schemas import (
     BookDetail,
     BookOut,
     BookPatch,
+    CalibreImportIn,
     ClientIn,
     ClientOut,
     ClientTestResult,
@@ -46,6 +47,7 @@ from libarr.api.schemas import (
     RequestIn,
     SearchResult,
     SendToKindleIn,
+    UserRoleIn,
 )
 from libarr.api.serializers import (
     serialize_author,
@@ -821,6 +823,55 @@ def send_book_to_kindle(
     except KindleError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"sent": True, "to": body.to, "title": book.title}
+
+
+@router.post("/system/import-calibre")
+def import_calibre(
+    body: CalibreImportIn,
+    session: Annotated[Session, Depends(get_session)],
+    _admin: Annotated[User, Depends(require_admin)],
+) -> dict[str, int]:
+    """Ingest a Calibre library (metadata.db) read-only; idempotent."""
+    from libarr.calibre_import import CalibreError, import_calibre_library
+
+    try:
+        return import_calibre_library(session, Path(body.path))
+    except CalibreError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/users")
+def list_users(
+    session: Annotated[Session, Depends(get_session)],
+    _admin: Annotated[User, Depends(require_admin)],
+) -> list[dict[str, Any]]:
+    users = session.scalars(select(User).order_by(User.username)).all()
+    return [
+        {
+            "id": user.id,
+            "username": user.username,
+            "role": user.role,
+            "created_at": user.created_at,
+        }
+        for user in users
+    ]
+
+
+@router.patch("/users/{username}")
+def set_user_role(
+    username: str,
+    body: UserRoleIn,
+    session: Annotated[Session, Depends(get_session)],
+    _admin: Annotated[User, Depends(require_admin)],
+) -> dict[str, Any]:
+    user = session.scalars(select(User).where(User.username == username)).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == _admin.id and body.role != "admin":
+        raise HTTPException(status_code=400, detail="Cannot demote yourself")
+    user.role = body.role
+    session.commit()
+    return {"id": user.id, "username": user.username, "role": user.role}
 
 
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------

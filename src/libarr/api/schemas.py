@@ -245,6 +245,14 @@ class SendToKindleIn(BaseModel):
     to: str = Field(min_length=1, max_length=255)
 
 
+class CalibreImportIn(BaseModel):
+    path: str = Field(min_length=1, max_length=1024)
+
+
+class UserRoleIn(BaseModel):
+    role: str = Field(pattern=r"^(admin|user)$")
+
+
 class QueueOut(BaseModel):
     id: int
     book_id: int | None
