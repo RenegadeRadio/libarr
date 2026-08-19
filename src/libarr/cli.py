@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -21,6 +22,20 @@ def _infer_kind(path: Path) -> str | None:
     return None
 
 
+def _migrations_dir() -> Path:
+    """Locate the alembic scripts (env override → source tree → image path)."""
+    env = os.environ.get("LIBARR_MIGRATIONS_DIR")
+    if env:
+        return Path(env)
+    source_tree = Path(__file__).resolve().parents[2] / "migrations"
+    if (source_tree / "env.py").is_file():
+        return source_tree
+    image_path = Path("/app/migrations")
+    if (image_path / "env.py").is_file():
+        return image_path
+    return source_tree
+
+
 def _ensure_migrated(database_url: str) -> None:
     """Run pending Alembic migrations (idempotent) so the CLI works on a
     fresh or outdated database without a separate `alembic upgrade head`."""
@@ -28,10 +43,7 @@ def _ensure_migrated(database_url: str) -> None:
     from alembic.config import Config
 
     config = Config()
-    config.set_main_option(
-        "script_location",
-        str(Path(__file__).resolve().parents[2] / "migrations"),
-    )
+    config.set_main_option("script_location", str(_migrations_dir()))
     config.set_main_option("sqlalchemy.url", database_url)
     command.upgrade(config, "head")
 
