@@ -45,6 +45,7 @@ class Candidate:
     seeders: int | None
     age_hours: float | None
     size_bytes: int | None
+    manual: bool = False
 
 
 def detect_protocol(release: Release) -> str:
@@ -81,4 +82,5 @@ def normalize_candidate(
         seeders=release.seeders,
         age_hours=age_hours,
         size_bytes=release.size_bytes,
+        manual=release.manual,
     )

@@ -4,10 +4,11 @@ Comparer order, Sonarr-style but book-flavored:
     1. Format score (profile)        — EPUB beats PDF, always
     2. Custom-format score           — +Retail/+DRM-Free, -Sample/-Unknown
     3. Protocol                      — direct > usenet > torrent (legal-first)
-    4. Indexer priority              — lower number = higher priority
-    5. Seeds/Peers                   — healthier torrent wins
-    6. Age                           — newer preferred
-    7. Size                          — smaller preferred (leaner text file)
+    4. Automation                    — API releases beat manual links
+    5. Indexer priority              — lower number = higher priority
+    6. Seeds/Peers                   — healthier torrent wins
+    7. Age                           — newer preferred
+    8. Size                          — smaller preferred (leaner text file)
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ def _score(candidate: Candidate, profile: QualityProfile) -> tuple[object, ...]:
         format_score(profile, candidate.fmt),
         candidate.custom_score,
         _PROTOCOL_RANK.get(candidate.protocol, 0),
+        0 if candidate.manual else 1,  # automated releases always win ties
         -candidate.indexer_priority,  # lower priority number wins
         candidate.seeders or 0,
         -(candidate.age_hours or 0.0),  # newer (smaller age) wins
@@ -40,7 +42,7 @@ def pick_best(
     Candidates with a disallowed format score 0 on the format axis; if every
     candidate scores 0 there, nothing is picked (Sonarr semantics).
     """
-    eligible = [c for c in candidates if format_score(profile, c.fmt) > 0]
+    eligible = [c for c in candidates if format_score(profile, c.fmt) > 0 or c.manual]
     if not eligible:
         return None
     # Fill custom scores per profile before ranking.

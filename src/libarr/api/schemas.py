@@ -239,3 +239,16 @@ class ConversionOut(BaseModel):
     output_path: str | None
     error: str | None
     created_at: datetime
+
+
+class QueueOut(BaseModel):
+    id: int
+    book_id: int | None
+    title: str
+    indexer_name: str
+    download_url: str | None
+    format: str | None
+    manual: bool
+    status: str
+    error: str | None
+    created_at: datetime

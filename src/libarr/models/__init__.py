@@ -196,6 +196,7 @@ class QueueItem(Base):
     size_bytes: Mapped[int | None] = mapped_column()
     client_name: Mapped[str | None] = mapped_column(String(64))
     client_download_id: Mapped[str | None] = mapped_column(String(255))
+    manual: Mapped[bool] = mapped_column(default=False)
     status: Mapped[str] = mapped_column(String(16), default="queued", nullable=False)
     error: Mapped[str | None] = mapped_column(String(512))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)

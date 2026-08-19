@@ -73,6 +73,7 @@ def search_now(session: Session, book: Book, *, user: User | None = None) -> dic
             download_url=winner.release.download_url,
             format=winner.fmt,
             size_bytes=winner.release.size_bytes,
+            manual=winner.manual,
         )
     )
     record(
@@ -80,9 +81,18 @@ def search_now(session: Session, book: Book, *, user: User | None = None) -> dic
         kind="grab",
         title=winner.release.title,
         book_id=book.id,
-        details=f"search-now from {winner.release.indexer_name}",
+        details=f"search-now from {winner.release.indexer_name}"
+        + (" (manual download)" if winner.manual else ""),
     )
     session.commit()
     if _user_wants_search_notifications(user):
         notify("Search complete", f"Queued: {winner.release.title}")
-    return {"queued": True, "winner": winner.release.title, "already_queued": False}
+    result: dict[str, Any] = {
+        "queued": True,
+        "winner": winner.release.title,
+        "already_queued": False,
+    }
+    if winner.manual:
+        result["manual"] = True
+        result["download_url"] = winner.release.download_url
+    return result

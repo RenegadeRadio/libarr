@@ -117,6 +117,22 @@ def test_disallowed_format_excluded():
     assert pick_best(c, _profile()).fmt == "PDF"  # M4B not allowed
 
 
+def test_automated_beats_manual_tie():
+    """A manual link (Anna's Archive) loses to an automated release."""
+    c = [
+        _candidate(manual=True),
+        _candidate(manual=False),
+    ]
+    best = pick_best(c, _profile())
+    assert best is not None and best.manual is False
+
+
+def test_manual_bypasses_format_gate():
+    """A manual link is eligible even with an unknown format."""
+    c = [_candidate(fmt=None, manual=True)]
+    assert pick_best(c, _profile()) is not None
+
+
 def test_no_eligible_candidate_returns_none():
     c = [_candidate(fmt="M4B"), _candidate(fmt="MP3")]
     assert pick_best(c, _profile()) is None

@@ -31,6 +31,7 @@ class Release:
     published_at: datetime | None = None
     page_url: str | None = None  # human-readable page (Gutenberg/SE)
     subjects: list[str] = field(default_factory=list)
+    manual: bool = False  # no API: user downloads it themselves (e.g. Anna's Archive)
 
 
 _FORMAT_PATTERNS: list[tuple[str, str]] = [

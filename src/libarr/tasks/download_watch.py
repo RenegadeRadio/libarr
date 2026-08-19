@@ -31,8 +31,12 @@ def process_queue(session: Session, *, import_hook: ImportHook | None = None) ->
         return stats
 
     # 1. Grab: hand queued items to the highest-priority enabled client.
+    # Manual items (e.g. Anna's Archive links) are bookmarks for the user —
+    # never pushed to a download client.
     client = build_client(rows[0])
-    queued = session.scalars(select(QueueItem).where(QueueItem.status == "queued")).all()
+    queued = session.scalars(
+        select(QueueItem).where(QueueItem.status == "queued", QueueItem.manual.is_(False))
+    ).all()
     for item in queued:
         if not item.download_url:
             item.status = "failed"

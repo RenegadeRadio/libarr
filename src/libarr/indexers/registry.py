@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
+from libarr.indexers.annasarchive import AnnasArchiveIndexer
 from libarr.indexers.base import IndexerClient, IndexerError
 from libarr.indexers.gutenberg import GutenbergIndexer
 from libarr.indexers.openlibrary import OpenLibraryIndexer
@@ -11,7 +12,8 @@ from libarr.indexers.torznab import TorznabIndexer
 from libarr.models import Indexer
 
 _CLIENTS = {
-    client.kind: client for client in (TorznabIndexer, GutenbergIndexer, OpenLibraryIndexer)
+    cls.kind: cls
+    for cls in (TorznabIndexer, GutenbergIndexer, OpenLibraryIndexer, AnnasArchiveIndexer)
 }
 
 SUPPORTED_KINDS = sorted(_CLIENTS)

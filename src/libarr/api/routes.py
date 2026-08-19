@@ -42,6 +42,7 @@ from libarr.api.schemas import (
     IndexerTestResult,
     ProgressOut,
     ProgressPut,
+    QueueOut,
     RequestIn,
     SearchResult,
 )
@@ -85,6 +86,7 @@ from libarr.models import (
     Edition,
     HistoryEvent,
     Indexer,
+    QueueItem,
     ReadingProgress,
     User,
 )
@@ -462,6 +464,30 @@ def trigger_process_queue(
     return {"stats": stats}
 
 
+@router.get("/queue", response_model=list[QueueOut])
+def list_queue(
+    session: Annotated[Session, Depends(get_session)],
+    limit: int = Query(100, ge=1, le=500),
+) -> list[dict[str, Any]]:
+    """Active queue: grabbed downloads plus manual-download bookmarks."""
+    items = session.scalars(select(QueueItem).order_by(QueueItem.id.desc()).limit(limit)).all()
+    return [
+        {
+            "id": item.id,
+            "book_id": item.book_id,
+            "title": item.title,
+            "indexer_name": item.indexer_name,
+            "download_url": item.download_url,
+            "format": item.format,
+            "manual": item.manual,
+            "status": item.status,
+            "error": item.error,
+            "created_at": item.created_at,
+        }
+        for item in items
+    ]
+
+
 # --- Wanted / history (plan 2.5) --------------------------------------------
 
 
@@ -629,6 +655,17 @@ def trigger_discovery_lists(
     """Evaluate every enabled discovery list (scheduler will own cadence)."""
     stats = evaluate_lists(session)
     return {"lists": stats}
+
+
+@router.get("/calendar")
+def calendar(
+    session: Annotated[Session, Depends(get_session)],
+    years_back: int = Query(1, ge=0, le=5),
+) -> list[dict[str, Any]]:
+    """Upcoming/new releases for monitored authors (year granularity)."""
+    from libarr.calendar import calendar_events
+
+    return calendar_events(session, years_back=years_back)
 
 
 # --- Requests / conversion (Phase 3) -----------------------------------------

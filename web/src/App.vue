@@ -8,6 +8,7 @@ const nav = [
   { to: '/search', label: 'Search' },
   { to: '/discover', label: 'Discover' },
   { to: '/request', label: 'Request' },
+  { to: '/calendar', label: 'Calendar' },
   { to: '/authors', label: 'Authors' },
   { to: '/wanted', label: 'Wanted' },
   { to: '/system', label: 'System' },

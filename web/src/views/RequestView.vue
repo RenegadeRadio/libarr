@@ -47,9 +47,16 @@ async function submit() {
       </button>
     </form>
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="result" class="ok">
+    <p v-if="result && !result.manual" class="ok">
       ✅ {{ result.title }} added{{ result.queued ? ` — queued: ${result.winner}` : ' — no release found yet (wanted list will keep watching)' }}
     </p>
+    <div v-if="result && result.manual" class="card manual">
+      <p class="ok">✅ {{ result.title }} added — automated indexers found nothing, but a manual source exists.</p>
+      <a class="btn" :href="result.download_url" target="_blank" rel="noopener">
+        Download manually (Anna's Archive)
+      </a>
+      <p class="muted">Opens in your browser; the queue keeps it bookmarked until you're done.</p>
+    </div>
   </section>
 </template>
 
