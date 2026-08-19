@@ -288,10 +288,10 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 ### Phase 2 — The *Arr core: acquisition (4–6 weeks)
 
 **2.1 Indexer layer**
-- [ ] Torznab/Newznab client (`feedparser`-based RSS + JSON API): `search(q, cat)`, `recent(cat)`, capability introspection; adapter class + `indexers/registry.py`.
-- [ ] Indexer CRUD API + UI (name, type, URL, API key, categories, priority, enable RSS) with test-indexer ("Test" button) like *Arr.
-- [ ] `tasks.rss_sync` — per-indexer interval loop with jitter, per-indexer failure isolation (one dead indexer never blocks others). Tests: mock indexer fixture (see §8) returns feed → assert wanted-match grabbed.
-- [ ] Ship **built-in legal sources**: `metadata/providers/gutenberg.py` + `standardebooks.py` as first-class *indexers* (direct download links as "releases") — acquisition works out of the box, no piracy required, day one.
+- [x] Torznab/Newznab client (ET-based parse; feedparser collapses repeated torznab:attr tags) RSS + JSON API): `search(q, cat)`, `recent(cat)`, capability introspection; adapter class + `indexers/registry.py`.
+- [x] Indexer CRUD API + test endpoint ("Test" button) like *Arr.
+- [x] `tasks.rss_sync` — per-indexer interval loop, per-indexer failure isolation (one dead indexer never blocks others). Tests: mock indexer fixture (see §8) returns feed → assert wanted-match grabbed.
+- [x] Ship **built-in legal sources**: Gutenberg + Open Library/IA as first-class indexers `metadata/providers/gutenberg.py` + `standardebooks.py` as first-class *indexers* (direct download links as "releases") — acquisition works out of the box, no piracy required, day one. **2026-08-19 note:** Standard Ebooks moved its OPDS feeds behind auth (401s for programmatic access) — replaced with an **Open Library + Internet Archive** adapter (search.json + `archive.org/download/{ia}/{ia}.epub`); Gutenberg's official endpoint serves a legacy JSON array (not gutendex), parsed accordingly.
 
 **2.2 Download clients**
 - [ ] Adapters: qBittorrent (Web API v2), Deluge (JSON-RPC), Transmission (RPC), SABnzbd, NZBGet — each: `add(release)`, `list(category)`, `remove(download_id)`, `status`. Category constant `libarr`. Tests: mocked HTTP fixtures per client.
