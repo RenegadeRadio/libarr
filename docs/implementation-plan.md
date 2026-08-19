@@ -342,9 +342,9 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 - [x] Notifications for search/failed-import; per-user notification prefs. — search-now outcomes notify per `users.notify_events` prefs; import/fail events already notify globally.
 
 ### Phase 4 — Scale & compat (ongoing)
-- Calibre `metadata.db` compatibility mode: detect Calibre layout; read DB for scan; optional write-through (add/update records, cover thumbnails); `calibredb` CLI bridge where safer.
-- Multi-user roles (admin/user), OIDC, per-user shelves/progress (BookLore parity).
-- Postgres backend (SQLAlchemy makes this mostly config + migration testing).
+- [x] Calibre `metadata.db` READ compatibility: `calibre_import.py` scans a Calibre library read-only (books/authors/data tables) and imports files idempotently (POST /system/import-calibre). Write-through + `calibredb` bridge deferred.
+- [x] Multi-user roles (admin/user): `require_admin` gate, GET /users + PATCH /users/{username} role (self-demote guarded). OIDC + per-user shelves/progress deferred.
+- [x] Postgres backend: `psycopg` driver added; `make_engine` accepts postgres URLs. Full migration testing on a live PG instance deferred (no PG in dev env).
 - Modular split: run `metadata`, `indexers`, `core` as separate processes over a shared API+DB (the "real stack" deployment) — the module seams from day one make this mechanical.
 - Plugin system (indexer/client/provider hooks) — deferred until community signals a need (YAGNI now).
 
