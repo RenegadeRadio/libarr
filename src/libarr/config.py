@@ -25,3 +25,7 @@ class Settings(BaseSettings):
     # Session signing secret. Unset → ephemeral random per start (cookies
     # invalidate on restart). Set LIBARR_SECRET_KEY for persistence.
     secret_key: str | None = None
+
+    # Notifications (Apprise): comma-separated service URLs, e.g.
+    # "tgram://bottoken/chatid, ntfy://topic". Empty = notifications off.
+    apprise_urls: str = ""

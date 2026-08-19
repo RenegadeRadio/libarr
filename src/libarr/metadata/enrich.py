@@ -21,6 +21,7 @@ from libarr.metadata.providers import BookMetadata, ProviderError
 from libarr.metadata.providers.googlebooks import GoogleBooksProvider
 from libarr.metadata.providers.openlibrary import OpenLibraryProvider
 from libarr.models import Book, Subject
+from libarr.notify import notify
 
 
 def enrich_book(session: Session, book: Book) -> bool:
@@ -67,6 +68,8 @@ def enrich_library(session: Session) -> int:
             enriched += int(enrich_book(session, book))
         except ProviderError:
             continue  # one dead provider must not stall the whole library
+    if enriched:
+        notify("Library enriched", f"{enriched} book(s) enriched from metadata providers")
     return enriched
 
 
