@@ -1,0 +1,14 @@
+[
+  {"title": "Dune - Frank Herbert (1965) EPUB", "expected_junk": false},
+  {"title": "Dune (2021) [team-ebooks] AZW3", "expected_junk": false},
+  {"title": "The Stand - Stephen King (1990) MOBI", "expected_junk": false},
+  {"title": "Neuromancer - William Gibson (1984).epub", "expected_junk": false},
+  {"title": "Dune - Frank Herbert (1965) EPUB [sample]", "expected_junk": true},
+  {"title": "Dune [Sample] AZW3", "expected_junk": true},
+  {"title": "The Stand MOBI password protected", "expected_junk": true},
+  {"title": "Dune password-protected EPUB", "expected_junk": true},
+  {"title": "Neuromancer scanned PDF.txt", "expected_junk": true},
+  {"title": "Dune [unknown] EPUB", "expected_junk": true},
+  {"title": "Dune - Frank Herbert (1965) EPUB [retail]", "expected_junk": false},
+  {"title": "Dune - Frank Herbert (1965) DRM-Free EPUB", "expected_junk": false}
+]
