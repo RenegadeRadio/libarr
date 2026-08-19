@@ -1,7 +1,10 @@
 """Open Library provider (free, open, dumpable — the primary source).
 
-Endpoints: /api/books (ISBN lookup), /works/{key}.json (work detail),
-/search.json (search), covers.openlibrary.org (covers).
+ISBN lookups resolve in three cached hops, mirroring the real data model:
+edition details (`/api/books`) → work (`/works/{key}.json`) → author names
+(`/authors/{key}.json`). Edition records carry no authors/subjects — those
+live on the work, which is why a single-endpoint design (like Readarr's)
+loses data. Endpoints: /api/books, /works, /authors, /search.json, covers.
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ class OpenLibraryProvider(BaseProvider):
     name = "openlibrary"
 
     def lookup_by_isbn(self, isbn13: str) -> BookMetadata | None:
-        """Resolve an ISBN to canonical metadata, or None when unknown."""
+        """Resolve an ISBN to canonical metadata (edition merged with its work)."""
 
         def fetch() -> dict[str, Any]:
             return self._get_json(
@@ -31,27 +34,30 @@ class OpenLibraryProvider(BaseProvider):
                 format="json",
             )
 
-        try:
-            payload = cached_fetch(
-                self.session, self.name, "isbn", isbn13, fetch
-            )
-        except ProviderError:
-            raise
+        payload = cached_fetch(self.session, self.name, "isbn", isbn13, fetch)
         details = payload.get(f"ISBN:{isbn13}", {}).get("details")
         if not details:
             return None
-        return self._normalize_details(details, isbn13)
+
+        edition_meta = self._normalize_details(details, isbn13)
+        works = details.get("works") or []
+        if works:
+            work_key = str(works[0].get("key", "")).removeprefix("/works/")
+            try:
+                work_meta = self.get_work(work_key)
+            except ProviderError:
+                work_meta = None  # edition data alone beats nothing (anti-Readarr rule)
+            if work_meta is not None:
+                return _merge(edition_meta, work_meta)
+        return edition_meta
 
     def get_work(self, work_key: str) -> BookMetadata | None:
-        """Fetch a work by its OL key (e.g. 'OL123W')."""
+        """Fetch a work by its OL key (e.g. 'OL123W'), including author names."""
 
         def fetch() -> dict[str, Any]:
             return self._get_json(f"{_API}/works/{work_key}.json")
 
-        try:
-            payload = cached_fetch(self.session, self.name, "work", work_key, fetch)
-        except ProviderError:
-            raise
+        payload = cached_fetch(self.session, self.name, "work", work_key, fetch)
         return self._normalize_details(payload, None)
 
     def search(self, query: str, limit: int = 20) -> list[BookMetadata]:
@@ -60,10 +66,7 @@ class OpenLibraryProvider(BaseProvider):
         def fetch() -> dict[str, Any]:
             return self._get_json(f"{_API}/search.json", q=query, limit=str(limit))
 
-        try:
-            payload = cached_fetch(self.session, self.name, "search", query, fetch)
-        except ProviderError:
-            raise
+        payload = cached_fetch(self.session, self.name, "search", query, fetch)
         results: list[BookMetadata] = []
         for doc in payload.get("docs", []):
             cover = None
@@ -85,12 +88,20 @@ class OpenLibraryProvider(BaseProvider):
     def _normalize_details(
         self, details: dict[str, Any], fallback_isbn: str | None
     ) -> BookMetadata:
-        authors = [a.get("name", "") for a in details.get("authors", []) if a.get("name")]
-        subjects = [s.get("name", "") for s in details.get("subjects", []) if s.get("name")]
+        authors = self._author_names(details)
+        # Work records carry subjects as plain strings; edition records as dicts.
+        subjects: list[str] = []
+        for subject in details.get("subjects", []):
+            if isinstance(subject, str):
+                subjects.append(subject)
+            elif isinstance(subject, dict) and subject.get("name"):
+                subjects.append(subject["name"])
         covers = details.get("covers") or []
         works = details.get("works") or []
         publish_date = str(details.get("publish_date", ""))
         year_match = _YEAR_RE.search(publish_date)
+        if year_match is None:
+            year_match = _YEAR_RE.search(str(details.get("first_publish_date", "")))
         isbn13 = _first(details.get("isbn_13") or [], isbn13=True) or fallback_isbn
 
         return BookMetadata(
@@ -101,10 +112,59 @@ class OpenLibraryProvider(BaseProvider):
             year=int(year_match.group(1)) if year_match else None,
             publisher=_first_name(details.get("publishers")),
             page_count=details.get("number_of_pages"),
+            language=_language_code(details.get("languages")),
             cover_url=f"{_COVERS}/b/id/{covers[0]}-L.jpg" if covers else None,
             work_key=str(works[0].get("key", "")).removeprefix("/works/") if works else None,
             isbn13=isbn13,
         )
+
+    def _author_names(self, details: dict[str, Any]) -> list[str]:
+        """Author names from entries; resolves /authors/{key}.json when absent (cached)."""
+        names: list[str] = []
+        for entry in details.get("authors") or []:
+            if not isinstance(entry, dict):
+                continue
+            name = entry.get("name")
+            if name:
+                names.append(name)
+                continue
+            author_obj = entry.get("author")
+            key = author_obj.get("key") if isinstance(author_obj, dict) else None
+            if not key:
+                continue
+            author_key = str(key).removeprefix("/authors/")
+
+            def fetch(author_key: str = author_key) -> dict[str, Any]:
+                return self._get_json(f"{_API}/authors/{author_key}.json")
+
+            try:
+                payload = cached_fetch(
+                    self.session, self.name, "author", author_key, fetch
+                )
+            except ProviderError:
+                continue
+            author_name = payload.get("name")
+            if author_name:
+                names.append(author_name)
+        return names
+
+
+def _merge(edition: BookMetadata, work: BookMetadata) -> BookMetadata:
+    """Edition wins for physical facts; work wins for authors/subjects/description."""
+    return BookMetadata(
+        title=edition.title or work.title,
+        authors=work.authors or edition.authors,
+        description=work.description or edition.description,
+        subjects=work.subjects or edition.subjects,
+        year=edition.year or work.year,
+        publisher=edition.publisher or work.publisher,
+        page_count=edition.page_count or work.page_count,
+        language=edition.language or work.language,
+        cover_url=edition.cover_url or work.cover_url,
+        work_key=edition.work_key or work.work_key,
+        edition_key=edition.edition_key or work.edition_key,
+        isbn13=edition.isbn13 or work.isbn13,
+    )
 
 
 def _description(raw: object) -> str | None:
@@ -122,6 +182,17 @@ def _first_name(items: list[Any] | None) -> str | None:
         return None
     first = items[0]
     return first.get("name") if isinstance(first, dict) else str(first)
+
+
+def _language_code(languages: list[Any] | None) -> str | None:
+    if not languages:
+        return None
+    first = languages[0]
+    key = first.get("key") if isinstance(first, dict) else str(first)
+    if not key:
+        return None
+    code = str(key).rsplit("/", 1)[-1]
+    return code or None
 
 
 def _first(isbns: list[Any], *, isbn13: bool) -> str | None:

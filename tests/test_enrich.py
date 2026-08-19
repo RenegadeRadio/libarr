@@ -16,7 +16,7 @@ OL_DETAILS = {
             "subjects": [{"name": "Science fiction"}],
             "covers": [12345],
             "publish_date": "1965",
-            "publishers": [{"name": "Chilton Books"}],
+            "publishers": ["Chilton Books"],
             "number_of_pages": 535,
             "works": [{"key": "/works/OL123W"}],
             "isbn_13": ["9780441172719"],
@@ -32,13 +32,15 @@ OL_DETAILS_SECOND_ISBN = {
             "subjects": [{"name": "Science fiction"}],
             "covers": [12345],
             "publish_date": "1969",
-            "publishers": [{"name": "Chilton Books"}],
+            "publishers": ["Chilton Books"],
             "number_of_pages": 256,
             "works": [{"key": "/works/OL999W"}],
             "isbn_13": ["9780306406157"],
         }
     }
 }
+
+OL_WORK_STUB = {"title": "Dune", "subjects": []}
 
 GOOGLE_VOLUMES = {
     "totalItems": 1,
@@ -67,16 +69,22 @@ def _book_with_isbn(session, isbn="9780441172719"):
     return book
 
 
+def _mock_ol_work():
+    respx.get(url__startswith="https://openlibrary.org/works").mock(
+        return_value=Response(200, json=OL_WORK_STUB)
+    )
+
+
 @respx.mock
 def test_enrich_book_populates_metadata(session):
     respx.get(url__startswith="https://openlibrary.org/api/books").mock(
         return_value=Response(200, json=OL_DETAILS)
     )
+    _mock_ol_work()
     book = _book_with_isbn(session)
 
     assert enrich_book(session, book) is True
 
-    assert book.description is None or book.work_key == "OL123W"
     assert book.work_key == "OL123W"
     assert book.year == 1965
     assert book.page_count == 535
@@ -144,6 +152,7 @@ def test_enrich_idempotent_subjects(session):
     respx.get(url__startswith="https://openlibrary.org/api/books").mock(
         return_value=Response(200, json=OL_DETAILS)
     )
+    _mock_ol_work()
     book = _book_with_isbn(session)
 
     enrich_book(session, book)
@@ -159,6 +168,7 @@ def test_enrich_library_batch(session):
             200, json={**OL_DETAILS, **OL_DETAILS_SECOND_ISBN}
         )
     )
+    _mock_ol_work()
     b1 = _book_with_isbn(session)
     b2 = _book_with_isbn(session, isbn="9780306406157")
 

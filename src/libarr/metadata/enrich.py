@@ -73,11 +73,12 @@ def enrich_library(session: Session) -> int:
 def _apply(
     session: Session, book: Book, meta: BookMetadata, source: str
 ) -> None:
-    book.work_key = meta.work_key or book.work_key
-    book.description = meta.description or book.description
-    book.year = meta.year or book.year
-    book.page_count = meta.page_count or book.page_count
-    book.language = meta.language or book.language
+    # Provider data fills gaps; never overwrite user/filename-derived values.
+    book.work_key = book.work_key or meta.work_key
+    book.description = book.description or meta.description
+    book.year = book.year or meta.year
+    book.page_count = book.page_count or meta.page_count
+    book.language = book.language or meta.language
     book.metadata_json = json.dumps(asdict(meta), ensure_ascii=False)
 
     if meta.publisher and book.editions:

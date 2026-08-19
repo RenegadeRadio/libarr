@@ -15,20 +15,26 @@ OL_DETAILS = {
         "details": {
             "title": "Dune",
             "subtitle": "The first volume of the Dune chronicles",
-            "authors": [{"name": "Frank Herbert", "key": "/authors/OL123A"}],
-            "subjects": [
-                {"name": "Science fiction", "url": "https://openlibrary.org/subjects/science_fiction"},
-                {"name": "Dune (Imaginary place)", "url": "https://openlibrary.org/subjects/dune_(imaginary_place)"},
-            ],
+            # Real edition records carry NO authors/subjects — those live on the work.
             "covers": [12345],
             "publish_date": "1965",
-            "publishers": [{"name": "Chilton Books"}],
+            "publishers": ["Chilton Books"],
             "number_of_pages": 535,
             "works": [{"key": "/works/OL123W"}],
             "isbn_13": ["9780441172719"],
         },
     }
 }
+
+OL_WORK = {
+    "title": "Dune",
+    "description": {"type": "/type/text", "value": "Set on the desert planet Arrakis."},
+    "subjects": ["Science fiction", "Dune (Imaginary place)"],
+    "authors": [{"author": {"key": "/authors/OL79034A"}, "type": {"key": "/type/author_role"}}],
+    "covers": [11481354],
+}
+
+OL_AUTHOR = {"name": "Frank Herbert"}
 
 OL_SEARCH = {
     "docs": [
@@ -78,18 +84,42 @@ def test_ol_lookup_by_isbn_normalizes(session):
     respx.get(url__startswith="https://openlibrary.org/api/books").mock(
         return_value=Response(200, json=OL_DETAILS)
     )
+    respx.get(url__startswith="https://openlibrary.org/works").mock(
+        return_value=Response(200, json=OL_WORK)
+    )
+    respx.get(url__startswith="https://openlibrary.org/authors").mock(
+        return_value=Response(200, json=OL_AUTHOR)
+    )
 
     meta = OpenLibraryProvider(session).lookup_by_isbn("9780441172719")
 
     assert meta.title == "Dune"
-    assert meta.authors == ["Frank Herbert"]
-    assert meta.subjects == ["Science fiction", "Dune (Imaginary place)"]
+    assert meta.authors == ["Frank Herbert"]  # resolved via /authors fetch
+    assert meta.subjects == ["Science fiction", "Dune (Imaginary place)"]  # from work
+    assert meta.description == "Set on the desert planet Arrakis."
     assert meta.year == 1965
     assert meta.publisher == "Chilton Books"
     assert meta.page_count == 535
     assert meta.work_key == "OL123W"
     assert meta.cover_url == "https://covers.openlibrary.org/b/id/12345-L.jpg"
     assert meta.isbn13 == "9780441172719"
+
+
+@respx.mock
+def test_ol_lookup_work_failure_degrades_to_edition(session):
+    respx.get(url__startswith="https://openlibrary.org/api/books").mock(
+        return_value=Response(200, json=OL_DETAILS)
+    )
+    respx.get(url__startswith="https://openlibrary.org/works").mock(
+        return_value=Response(500, text="boom")
+    )
+
+    meta = OpenLibraryProvider(session).lookup_by_isbn("9780441172719")
+
+    # Edition data alone, no crash — the anti-Readarr degradation rule.
+    assert meta.title == "Dune"
+    assert meta.year == 1965
+    assert meta.authors == []
 
 
 @respx.mock
