@@ -342,9 +342,9 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 - [x] Notifications for search/failed-import; per-user notification prefs. — search-now outcomes notify per `users.notify_events` prefs; import/fail events already notify globally.
 
 ### Phase 4 — Scale & compat (ongoing)
-- [x] Calibre `metadata.db` READ compatibility: `calibre_import.py` scans a Calibre library read-only (books/authors/data tables) and imports files idempotently (POST /system/import-calibre). Write-through + `calibredb` bridge deferred.
-- [x] Multi-user roles (admin/user): `require_admin` gate, GET /users + PATCH /users/{username} role (self-demote guarded). OIDC + per-user shelves/progress deferred.
-- [x] Postgres backend: `psycopg` driver added; `make_engine` accepts postgres URLs. Full migration testing on a live PG instance deferred (no PG in dev env).
+- [x] Calibre `metadata.db` compatibility: READ import (POST /system/import-calibre) + `calibredb` CLI export bridge (POST /system/export-calibre) — Calibre stays authoritative, Libarr only adds.
+- [x] Multi-user: admin/user roles (require_admin, users API, self-demote guard) + per-user shelves (CRUD + book membership, user-scoped). OIDC deferred (needs an IdP to test against).
+- [x] Postgres backend: LIVE-VERIFIED on real Postgres 16 (Docker): all 14 migrations apply; dump ingestion, ILIKE search, matcher fallback, offline ISBN resolution all work. FTS is dialect-aware (FTS5 on SQLite, ILIKE on PG; tsvector parity deferred).
 - Modular split: run `metadata`, `indexers`, `core` as separate processes over a shared API+DB (the "real stack" deployment) — the module seams from day one make this mechanical.
 - Plugin system (indexer/client/provider hooks) — deferred until community signals a need (YAGNI now).
 
