@@ -93,10 +93,18 @@ def upgrade() -> None:
         sa.UniqueConstraint("book_id", "slug", name="uq_subject_book_slug"),
     )
     op.create_index("ix_files_format", "files", ["format"])
-    op.execute(
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
         # Regular FTS5 (not contentless): DELETE/UPDATE are required for reindexing.
-        "CREATE VIRTUAL TABLE book_fts USING fts5(title, author, description, subjects)"
-    )
+        op.execute("CREATE VIRTUAL TABLE book_fts USING fts5(title, author, description, subjects)")
+    else:
+        # Postgres: plain search table keyed by book id; ILIKE-based search
+        # (tsvector/trigram parity is a future enhancement, Phase 4).
+        op.execute(
+            "CREATE TABLE book_fts ("
+            "id INTEGER PRIMARY KEY, title TEXT, author TEXT, "
+            "description TEXT, subjects TEXT)"
+        )
 
 
 def downgrade() -> None:

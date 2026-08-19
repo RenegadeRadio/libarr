@@ -100,11 +100,23 @@ def _strip_edition_keywords(norm_title: str) -> str | None:
 
 
 def _fts_match(session: Session, tokens: list[str], norm_author: str | None) -> Book | None:
-    query = " AND ".join(f'"{t}"' for t in tokens)
-    rows = session.execute(
-        text("SELECT rowid FROM book_fts WHERE book_fts MATCH :q LIMIT 10"),
-        {"q": query},
-    ).all()
+    if session.get_bind().dialect.name == "sqlite":
+        query = " AND ".join(f'"{t}"' for t in tokens)
+        rows = session.execute(
+            text("SELECT rowid FROM book_fts WHERE book_fts MATCH :q LIMIT 10"),
+            {"q": query},
+        ).all()
+    else:  # Postgres: substring fallback — every token must appear in title or author
+        clauses = " AND ".join(
+            f"(b.title ILIKE :p{i} OR a.name ILIKE :p{i})" for i in range(len(tokens))
+        )
+        rows = session.execute(
+            text(
+                "SELECT b.id FROM books b LEFT JOIN authors a ON a.id = b.author_id "
+                f"WHERE {clauses} LIMIT 10"
+            ),
+            {f"p{i}": f"%{token}%" for i, token in enumerate(tokens)},
+        ).all()
 
     best: tuple[int, Book] | None = None
     for (book_id,) in rows:

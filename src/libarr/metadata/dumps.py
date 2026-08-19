@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import insert, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from libarr.metadata.providers import BookMetadata
@@ -98,10 +100,10 @@ def ingest_dump(session: Session, path: Path, *, kind: str) -> int:
         if buffer:
             session.execute(insert(DumpRow), buffer)
         if isbn_buffer:
-            session.execute(
-                insert(DumpIsbn).prefix_with("OR IGNORE"),
-                isbn_buffer,
-            )
+            if session.get_bind().dialect.name == "sqlite":
+                session.execute(sqlite_insert(DumpIsbn).on_conflict_do_nothing(), isbn_buffer)
+            else:  # Postgres
+                session.execute(pg_insert(DumpIsbn).on_conflict_do_nothing(), isbn_buffer)
         session.commit()
         buffer = []
         isbn_buffer = []

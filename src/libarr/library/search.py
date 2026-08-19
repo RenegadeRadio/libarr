@@ -35,8 +35,12 @@ def search_books(
     if q:
         tokens = [t for t in normalize_text(q).split() if t not in STOPWORDS]
         if tokens:
-            clauses.append("book_fts MATCH :q")
-            params["q"] = " AND ".join(f'"{t}"' for t in tokens)
+            if session.get_bind().dialect.name == "sqlite":
+                clauses.append("book_fts MATCH :q")
+                params["q"] = " AND ".join(f'"{t}"' for t in tokens)
+            else:  # Postgres: substring search (FTS parity is a future pass)
+                clauses.append("(b.title ILIKE :q OR a.name ILIKE :q OR b.description ILIKE :q)")
+                params["q"] = f"%{' '.join(tokens)}%"
     if genre:
         clauses.append("b.id IN (SELECT book_id FROM subjects WHERE slug = :genre)")
         params["genre"] = genre
@@ -51,7 +55,18 @@ def search_books(
         params["language"] = language
 
     where = " WHERE " + " AND ".join(clauses) if clauses else ""
-    joins = "FROM book_fts f JOIN books b ON b.id = f.rowid"
+    if session.get_bind().dialect.name == "sqlite":
+        joins = "FROM book_fts f JOIN books b ON b.id = f.rowid"
+        facets_joins = (
+            "FROM subjects s JOIN books b ON b.id = s.book_id "
+            "JOIN book_fts f ON f.rowid = s.book_id"
+        )
+    else:  # Postgres
+        joins = "FROM books b LEFT JOIN authors a ON a.id = b.author_id"
+        facets_joins = (
+            "FROM subjects s JOIN books b ON b.id = s.book_id "
+            "LEFT JOIN authors a ON a.id = b.author_id"
+        )
 
     total = session.execute(text(f"SELECT COUNT(*) {joins}{where}"), params).scalar_one()
 
@@ -59,9 +74,7 @@ def search_books(
         {"slug": slug, "name": name, "count": count}
         for slug, name, count in session.execute(
             text(
-                f"SELECT s.slug, s.name, COUNT(*) AS c FROM subjects s "
-                f"JOIN books b ON b.id = s.book_id "
-                f"JOIN book_fts f ON f.rowid = s.book_id{where} "
+                f"SELECT s.slug, s.name, COUNT(*) AS c {facets_joins}{where} "
                 f"GROUP BY s.slug, s.name ORDER BY c DESC, s.name LIMIT 15"
             ),
             params,
