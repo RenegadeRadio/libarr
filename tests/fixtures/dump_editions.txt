@@ -1,0 +1,3 @@
+{"key": "/books/OL1M", "type": {"key": "/type/edition"}, "title": "Dune", "works": [{"key": "/works/OL1W"}], "isbn_13": ["9780441013593"], "isbn_10": ["0441013597"], "publish_date": "2005", "physical_format": "hardcover", "publishers": ["Ace Books"], "languages": [{"key": "/languages/eng"}]}
+{"key": "/books/OL2M", "type": {"key": "/type/edition"}, "title": "Neuromancer", "works": [{"key": "/works/OL2W"}], "isbn_13": ["9780441569595"], "publish_date": "1984", "physical_format": "paperback", "languages": [{"key": "/languages/eng"}]}
+{"key": "/books/OL3M", "type": {"key": "/type/edition"}, "title": "Dune", "isbn_13": ["9780441172719"], "publish_date": "1965", "languages": [{"key": "/languages/eng"}]}

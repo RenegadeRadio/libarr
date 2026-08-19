@@ -1,0 +1,3 @@
+{"key": "/authors/OL2A", "type": {"key": "/type/author"}, "name": "Frank Herbert", "birth_date": "1920", "death_date": "1986", "bio": "American author of Dune."}
+{"key": "/authors/OL3A", "type": {"key": "/type/author"}, "name": "William Gibson", "birth_date": "1948"}
+{"key": "/authors/OL999A", "type": {"key": "/type/delete"}, "deleted": true}

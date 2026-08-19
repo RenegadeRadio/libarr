@@ -24,7 +24,11 @@ class OpenLibraryProvider(BaseProvider):
     name = "openlibrary"
 
     def lookup_by_isbn(self, isbn13: str) -> BookMetadata | None:
-        """Resolve an ISBN to canonical metadata (edition merged with its work)."""
+        """Resolve an ISBN to canonical metadata (edition merged with its work).
+
+        Provider-down drill (plan 2.5): when Open Library is unreachable the
+        local dump mirror resolves the same ISBN offline.
+        """
 
         def fetch() -> dict[str, Any]:
             return self._get_json(
@@ -34,7 +38,12 @@ class OpenLibraryProvider(BaseProvider):
                 format="json",
             )
 
-        payload = cached_fetch(self.session, self.name, "isbn", isbn13, fetch)
+        try:
+            payload = cached_fetch(self.session, self.name, "isbn", isbn13, fetch)
+        except ProviderError:
+            from libarr.metadata.dumps import resolve_isbn_from_dump
+
+            return resolve_isbn_from_dump(self.session, isbn13)
         details = payload.get(f"ISBN:{isbn13}", {}).get("details")
         if not details:
             return None

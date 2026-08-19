@@ -235,6 +235,27 @@ class DiscoveryList(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
 
 
+class DumpRow(Base):
+    """One Open Library dump record (plan 2.5) — the offline metadata mirror."""
+
+    __tablename__ = "dump_rows"
+
+    ol_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)  # work|edition|author
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class DumpIsbn(Base):
+    """Edition-dump ISBN index: isbn13 → edition/work keys (offline lookup)."""
+
+    __tablename__ = "dump_isbns"
+
+    isbn13: Mapped[str] = mapped_column(String(32), primary_key=True)
+    edition_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    work_key: Mapped[str | None] = mapped_column(String(128))
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+
+
 class User(Base):
     """Application user (plan Task 1.11). Admin bootstraps on first run."""
 
@@ -289,6 +310,8 @@ __all__ = [
     "Book",
     "DiscoveryList",
     "DownloadClientRow",
+    "DumpIsbn",
+    "DumpRow",
     "Edition",
     "File",
     "HistoryEvent",

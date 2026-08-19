@@ -159,13 +159,15 @@ def test_google_categories_become_subjects(session):
 
 
 @respx.mock
-def test_http_error_raises_provider_error(session):
+def test_http_error_returns_none_without_dump_fallback(session):
+    """Provider-down resilience (plan 2.5): a 500 resolves to None when the
+    dump mirror has nothing — the enrich pipeline treats that as 'unknown',
+    not as a crash."""
     respx.get(url__startswith="https://openlibrary.org/api/books").mock(
         return_value=Response(500, text="boom")
     )
 
-    with pytest.raises(ProviderError):
-        OpenLibraryProvider(session).lookup_by_isbn("9780441172719")
+    assert OpenLibraryProvider(session).lookup_by_isbn("9780441172719") is None
 
 
 def test_cache_hit_avoids_refetch(session):

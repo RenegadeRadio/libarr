@@ -24,6 +24,9 @@ dependencies = [
     "itsdangerous>=2.2.0",
 ]
 
+[project.scripts]
+libarr = "libarr.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",
