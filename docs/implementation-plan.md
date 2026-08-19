@@ -343,9 +343,9 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 
 ### Phase 4 — Scale & compat (ongoing)
 - [x] Calibre `metadata.db` compatibility: READ import (POST /system/import-calibre) + `calibredb` CLI export bridge (POST /system/export-calibre) — Calibre stays authoritative, Libarr only adds.
-- [x] Multi-user: admin/user roles (require_admin, users API, self-demote guard) + per-user shelves (CRUD + book membership, user-scoped). OIDC deferred (needs an IdP to test against).
+- [x] Multi-user: admin/user roles + per-user shelves + OIDC single sign-on (auth-code flow with userinfo trust anchor, HMAC-bound state, auto-provisioning; tested against a mocked IdP).
 - [x] Postgres backend: LIVE-VERIFIED on real Postgres 16 (Docker): all 14 migrations apply; dump ingestion, ILIKE search, matcher fallback, offline ISBN resolution all work. FTS is dialect-aware (FTS5 on SQLite, ILIKE on PG; tsvector parity deferred).
-- Modular split: run `metadata`, `indexers`, `core` as separate processes over a shared API+DB (the "real stack" deployment) — the module seams from day one make this mechanical.
+- [x] Modular split (worker/API): `libarr worker [--once|--interval]` runs the jobs process standalone over the shared DB; API process can run with LIBARR_SCHEDULER_ENABLED=false. Live-verified: worker --once ran a full cycle against the dev DB.
 - Plugin system (indexer/client/provider hooks) — deferred until community signals a need (YAGNI now).
 
 ---
