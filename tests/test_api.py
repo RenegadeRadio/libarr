@@ -1,27 +1,11 @@
 """Phase 1.7/1.7b — REST API (authors/books/editions) + genre/keyword search."""
 
-import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from libarr.api.deps import get_session
 from libarr.db import session_factory
 from libarr.fts import reindex_book
-from libarr.main import app
 from libarr.models import Author, Book, Edition, File, Subject
 from tests.fixtures.make_epub import make_epub
-
-
-@pytest.fixture()
-def client(db, tmp_path):
-    def override():
-        with session_factory(db)() as s:
-            yield s
-
-    app.dependency_overrides[get_session] = override
-    with TestClient(app) as test_client:
-        yield test_client, db
-    app.dependency_overrides.clear()
 
 
 def _seed_library(session, tmp_path):

@@ -5,8 +5,11 @@ from pathlib import Path
 import alembic.command
 import alembic.config
 import pytest
+from fastapi.testclient import TestClient
 
+from libarr.api.deps import get_session
 from libarr.db import make_engine, session_factory
+from libarr.main import app
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,3 +33,16 @@ def session(db):
     """Session scoped to the migrated engine."""
     with session_factory(db)() as s:
         yield s
+
+
+@pytest.fixture()
+def client(db):
+    """TestClient with its DB session overridden to the migrated tmp engine."""
+    def override():
+        with session_factory(db)() as s:
+            yield s
+
+    app.dependency_overrides[get_session] = override
+    with TestClient(app) as test_client:
+        yield test_client, db
+    app.dependency_overrides.clear()

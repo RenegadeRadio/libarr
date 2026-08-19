@@ -1,4 +1,4 @@
-"""HTTP API v1 routes: authors, books, file download, search."""
+"""HTTP API v1 routes: authors, books, file download, search, OPDS."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -26,24 +26,23 @@ from libarr.api.serializers import (
     serialize_book_detail,
 )
 from libarr.fts import reindex_book
+from libarr.library.opds import (
+    CATALOG_TYPE,
+    MEDIA_TYPES,
+    OPENSEARCH_TYPE,
+    author_books_feed,
+    authors_feed,
+    new_feed,
+    root_feed,
+    search_description,
+    search_feed,
+)
 from libarr.library.search import search_books
 from libarr.metadata.matcher import STOPWORDS
 from libarr.metadata.normalize import normalize_text
 from libarr.models import Author, Book, Edition
 
 router = APIRouter()
-
-_MEDIA_TYPES = {
-    "epub": "application/epub+zip",
-    "pdf": "application/pdf",
-    "mobi": "application/x-mobipocket-ebook",
-    "azw3": "application/x-mobipocket-ebook",
-    "fb2": "application/x-fictionbook+xml",
-    "cbz": "application/vnd.comicbook+zip",
-    "cbr": "application/vnd.comicbook-rar",
-    "m4b": "audio/mp4",
-    "mp3": "audio/mpeg",
-}
 
 
 def _book_options() -> tuple[Any, ...]:
@@ -134,9 +133,53 @@ def book_file(book_id: int, session: Annotated[Session, Depends(get_session)]) -
     path = Path(file_row.path)
     return FileResponse(
         path,
-        media_type=_MEDIA_TYPES.get(file_row.format.lower()),
+        media_type=MEDIA_TYPES.get(file_row.format.lower()),
         filename=path.name,
     )
+
+
+# --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------
+# Served at the root (no /api/v1 prefix): e-readers expect /opds.
+
+
+opds_router = APIRouter()
+
+
+@opds_router.get("/opds")
+def opds_root() -> Response:
+    return Response(content=root_feed(), media_type=CATALOG_TYPE)
+
+
+@opds_router.get("/opds/authors")
+def opds_authors(session: Annotated[Session, Depends(get_session)]) -> Response:
+    return Response(content=authors_feed(session), media_type=CATALOG_TYPE)
+
+
+@opds_router.get("/opds/authors/{author_id}")
+def opds_author(
+    author_id: int, session: Annotated[Session, Depends(get_session)]
+) -> Response:
+    feed = author_books_feed(session, author_id)
+    if feed is None:
+        raise HTTPException(status_code=404, detail="Author not found")
+    return Response(content=feed, media_type=CATALOG_TYPE)
+
+
+@opds_router.get("/opds/new")
+def opds_new(session: Annotated[Session, Depends(get_session)]) -> Response:
+    return Response(content=new_feed(session), media_type=CATALOG_TYPE)
+
+
+@opds_router.get("/opds/search.xml")
+def opds_search_description() -> Response:
+    return Response(content=search_description(), media_type=OPENSEARCH_TYPE)
+
+
+@opds_router.get("/opds/search")
+def opds_search(
+    q: str, session: Annotated[Session, Depends(get_session)]
+) -> Response:
+    return Response(content=search_feed(session, q), media_type=CATALOG_TYPE)
 
 
 @router.get("/search", response_model=SearchResult)
