@@ -138,6 +138,24 @@ class Setting(Base):
     value: Mapped[str] = mapped_column(String(4096), nullable=False)
 
 
+class Indexer(Base):
+    """An indexer of ebook releases (plan 2.1): Torznab/Newznab or built-in."""
+
+    __tablename__ = "indexers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    # ^ torznab | gutenberg | standardebooks
+    url: Mapped[str | None] = mapped_column(String(512))
+    api_key: Mapped[str | None] = mapped_column(String(255))
+    categories: Mapped[str] = mapped_column(String(255), default="7000,7010,7030,7050")
+    priority: Mapped[int] = mapped_column(default=100)
+    enabled: Mapped[bool] = mapped_column(default=True)
+    rss_enabled: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+
+
 class User(Base):
     """Application user (plan Task 1.11). Admin bootstraps on first run."""
 
@@ -188,6 +206,6 @@ class MetadataCache(Base):
 
 
 __all__ = [
-    "Author", "Book", "Edition", "File", "MetadataCache", "ReadingProgress",
-    "Series", "Setting", "Subject", "User",
+    "Author", "Book", "Edition", "File", "Indexer", "MetadataCache",
+    "ReadingProgress", "Series", "Setting", "Subject", "User",
 ]

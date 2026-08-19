@@ -1,0 +1,28 @@
+"""Indexer registry (plan 2.1.1): Indexer row → client instance."""
+
+from __future__ import annotations
+
+from libarr.indexers.base import IndexerError
+from libarr.indexers.gutenberg import GutenbergIndexer
+from libarr.indexers.standardebooks import StandardEbooksIndexer
+from libarr.indexers.torznab import TorznabIndexer
+from libarr.models import Indexer
+
+_CLIENTS = {
+    client.kind: client
+    for client in (TorznabIndexer, GutenbergIndexer, StandardEbooksIndexer)
+}
+
+SUPPORTED_KINDS = sorted(_CLIENTS)
+
+
+def build_indexer(row: Indexer) -> object:
+    client_cls = _CLIENTS.get(row.kind)
+    if client_cls is None:
+        raise IndexerError(f"unknown indexer kind: {row.kind}")
+    return client_cls(
+        name=row.name,
+        url=row.url,
+        api_key=row.api_key,
+        categories=row.categories,
+    )
