@@ -12,7 +12,9 @@
 
 **Phase 0 (scaffold): COMPLETE** — repo `github.com/RenegadeRadio/libarr` (public), CI green (ruff/mypy/pytest/docker), Docker image boots and serves `/api/v1/health`, Vue 3 SPA shell builds.
 
-**Phase 1 (Libarr Lite): Tasks 1.1–1.6 COMPLETE; 1.7+ pending.** Shipped: media models + FTS5, filename parser, library scan (fast OPF-only EPUB extraction), matcher, OpenLibrary/GoogleBooks providers with stale-while-error cache, enrichment worker (genre facets). **56 tests passing.** Next up: Task 1.7/1.7b (REST API + genre/keyword search endpoint) → 1.8 OPDS → 1.9/1.10 reader+covers → 1.11 auth → 1.12 frontend → 1.13 notifications.
+**Phase 1 (Libarr Lite): COMPLETE (2026-08-19).** All 13 tasks shipped: models+FTS5, parser, scan, matcher, providers (3-hop OL resolution) with stale-while-error cache, enrichment, REST API, genre/keyword search with facets, OPDS 1.2, reader/progress/covers, forced auth (cookie/API-key/Basic), Vue 3 frontend (login, grid, search UI), Apprise notifications. **91 tests passing** + headless-Chromium UI smoke test (`scripts/ui-smoke.mjs`). Live-verified end-to-end against real Open Library data.
+
+Next up: **Phase 2 — the *Arr core** (indexers, download clients, decision engine, import pipeline, RSS monitoring, quality profiles).
 
 ---
 ## 1. Executive Summary — Why Build This Now
@@ -278,9 +280,9 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 - [x] **Task 1.8**: `library/opds.py` — OPDS 1.2 root + by-author + search + acquisition entries (`application/epub+zip`); OPDS 2.0 JSON in Phase 2. Tests: parse generated feed, assert required Atom namespaces/links.
 - [x] **Task 1.9**: `library/reader.py` — stream EPUB (with `Content-Disposition`), reading-progress endpoint (position per user), PDF streaming. Tests: range/simple GETs.
 - [x] **Task 1.10**: `library/covers.py` — cover endpoint, local cover cache dir, EPUB cover extraction. Test: generated EPUB → cover bytes returned.
-- [ ] **Task 1.11**: Auth: forced login (hash `argon2` via `pwdlib`), first-run admin bootstrap, API-key auth for integrations, CSRF-safe cookie sessions. Tests: unauthenticated → 401; bootstrap flow.
-- [ ] **Task 1.12**: Frontend: library grid + book detail + edit metadata + reader route + OPDS links visible + **search bar with genre/keyword query + genre facet browse**. Manual E2E: KOReader/Kobo browser hits OPDS, downloads a book. Commit.
-- [ ] **Task 1.13**: Notifications wiring (Apprise) for import/enrich events. Test: fake apprise transport records payload.
+- [x] **Task 1.11**: Auth: forced login (hash `argon2` via `pwdlib`), first-run admin bootstrap, API-key auth for integrations, CSRF-safe cookie sessions. Tests: unauthenticated → 401; bootstrap flow.
+- [x] **Task 1.12**: Frontend: library grid + book detail + edit metadata + reader route + OPDS links visible + **search bar with genre/keyword query + genre facet browse**. Manual E2E: KOReader/Kobo browser hits OPDS, downloads a book. Commit.
+- [x] **Task 1.13**: Notifications wiring (Apprise) for import/enrich events. Test: fake apprise transport records payload.
 - [ ] **Milestone 1**: "Libarr Lite" — point at folder, get browsable, searchable, OPDS-served, cover-rich library. **This is already a shippable Calibre-Web alternative.**
 
 ### Phase 2 — The *Arr core: acquisition (4–6 weeks)

@@ -4,11 +4,11 @@ Self-hosted, *Arr-style eBook automation platform: monitor authors and genres,
 search indexers, download, import, organize, and serve your library via OPDS
 and a built-in reader.
 
-> **Status: Phase 1 in progress (2026-08-19).** Library engine complete — scan →
-> metadata enrichment → searchable FTS index with genre facets; **56 tests
-> passing** (pytest, ruff + mypy strict clean). Next: REST API + genre/keyword
-> search endpoint, OPDS catalog, reader, auth. See
-> `docs/implementation-plan.md` for the full plan with task checkboxes.
+> **Status: Phase 1 complete (2026-08-19) — "Libarr Lite".** Library scan → metadata
+> enrichment → genre/keyword search → OPDS catalog → reader/covers → auth → Vue 3
+> frontend, all live-verified; **91 tests passing**, headless-browser UI smoke test
+> included. Next: Phase 2 — the *Arr core (indexers, download clients, decision
+> engine, import pipeline, RSS monitoring). See `docs/implementation-plan.md`.
 
 ## Layout
 
