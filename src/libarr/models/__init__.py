@@ -295,6 +295,26 @@ class KoreaderProgress(Base):
     __table_args__ = (UniqueConstraint("user_id", "document", name="uq_koreader_user_doc"),)
 
 
+class Shelf(Base):
+    """A per-user book collection (Phase 4)."""
+
+    __tablename__ = "shelves"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+
+    books: Mapped[list["Book"]] = relationship(secondary="shelf_books", lazy="selectin")
+
+
+class ShelfBook(Base):
+    __tablename__ = "shelf_books"
+
+    shelf_id: Mapped[int] = mapped_column(ForeignKey("shelves.id"), primary_key=True)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), primary_key=True)
+
+
 class User(Base):
     """Application user (plan Task 1.11). Admin bootstraps on first run."""
 
@@ -365,6 +385,8 @@ __all__ = [
     "ReadingProgress",
     "Series",
     "Setting",
+    "Shelf",
+    "ShelfBook",
     "Subject",
     "User",
 ]

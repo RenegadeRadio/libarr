@@ -120,3 +120,51 @@ def import_calibre_library(session: Session, library_path: Path) -> dict[str, in
         added += 1
     session.commit()
     return {"added": added, "skipped": skipped}
+
+
+def export_to_calibre(
+    session: Session,
+    library_path: Path,
+    book_ids: list[int],
+    *,
+    command: str = "calibredb",
+) -> dict[str, int]:
+    """Push Libarr books into a Calibre library via the `calibredb` CLI.
+
+    The bridge shells out to Calibre's own tool (GPL-clean — no Calibre code
+    embedded); the Calibre library is always the authority, we only add.
+    """
+    import subprocess
+
+    exported = 0
+    for book in session.scalars(select(Book).where(Book.id.in_(book_ids))).all():
+        file_path = _best_file_path(session, book)
+        if file_path is None or not Path(file_path).is_file():
+            continue
+        try:
+            subprocess.run(
+                [command, "add", "--with-library", str(library_path), file_path],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                check=True,
+            )
+        except FileNotFoundError as exc:
+            raise CalibreError(
+                f"calibredb not found on PATH ({command}) — install Calibre or point at the binary"
+            ) from exc
+        exported += 1
+    return {"exported": exported}
+
+
+def _best_file_path(session: Session, book: Book) -> str | None:
+    from libarr.acquisition.wanted import best_imported_format
+
+    best = best_imported_format(session, book)
+    if best is None:
+        return None
+    for edition in book.editions:
+        for file_row in edition.files:
+            if file_row.format == best:
+                return file_row.path
+    return None

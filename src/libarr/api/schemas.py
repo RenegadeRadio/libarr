@@ -253,6 +253,19 @@ class UserRoleIn(BaseModel):
     role: str = Field(pattern=r"^(admin|user)$")
 
 
+class ShelfIn(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+
+
+class ShelfBooksIn(BaseModel):
+    book_ids: list[int] = Field(min_length=1, max_length=1000)
+
+
+class CalibreExportIn(BaseModel):
+    library: str = Field(min_length=1, max_length=1024)
+    book_ids: list[int] = Field(min_length=1, max_length=1000)
+
+
 class QueueOut(BaseModel):
     id: int
     book_id: int | None

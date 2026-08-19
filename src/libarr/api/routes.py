@@ -27,6 +27,7 @@ from libarr.api.schemas import (
     BookDetail,
     BookOut,
     BookPatch,
+    CalibreExportIn,
     CalibreImportIn,
     ClientIn,
     ClientOut,
@@ -47,6 +48,8 @@ from libarr.api.schemas import (
     RequestIn,
     SearchResult,
     SendToKindleIn,
+    ShelfBooksIn,
+    ShelfIn,
     UserRoleIn,
 )
 from libarr.api.serializers import (
@@ -92,6 +95,7 @@ from libarr.models import (
     Indexer,
     QueueItem,
     ReadingProgress,
+    Shelf,
     User,
 )
 from libarr.tasks.download_watch import process_queue
@@ -872,6 +876,129 @@ def set_user_role(
     user.role = body.role
     session.commit()
     return {"id": user.id, "username": user.username, "role": user.role}
+
+
+@router.post("/system/export-calibre")
+def export_calibre(
+    body: CalibreExportIn,
+    session: Annotated[Session, Depends(get_session)],
+    _admin: Annotated[User, Depends(require_admin)],
+) -> dict[str, int]:
+    """Push books into a Calibre library via the `calibredb` CLI bridge."""
+    from libarr.calibre_import import CalibreError, export_to_calibre
+
+    try:
+        return export_to_calibre(session, Path(body.library), body.book_ids)
+    except CalibreError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# --- Per-user shelves (Phase 4) -----------------------------------------------
+
+
+def _serialize_shelf(shelf: Shelf) -> dict[str, Any]:
+    return {
+        "id": shelf.id,
+        "name": shelf.name,
+        "book_count": len(shelf.books),
+        "created_at": shelf.created_at,
+    }
+
+
+@router.get("/shelves")
+def list_shelves(
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
+) -> list[dict[str, Any]]:
+    shelves = session.scalars(
+        select(Shelf).where(Shelf.user_id == user.id).order_by(Shelf.name)
+    ).all()
+    return [_serialize_shelf(shelf) for shelf in shelves]
+
+
+@router.post("/shelves")
+def create_shelf(
+    body: ShelfIn,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
+) -> dict[str, Any]:
+    shelf = Shelf(user_id=user.id, name=body.name)
+    session.add(shelf)
+    session.commit()
+    session.refresh(shelf)
+    return _serialize_shelf(shelf)
+
+
+def _owned_shelf(session: Session, user: User, shelf_id: int) -> Shelf:
+    shelf = session.get(Shelf, shelf_id)
+    if shelf is None or shelf.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Shelf not found")
+    return shelf
+
+
+@router.get("/shelves/{shelf_id}")
+def get_shelf(
+    shelf_id: int,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
+) -> dict[str, Any]:
+    shelf = _owned_shelf(session, user, shelf_id)
+    return {
+        **_serialize_shelf(shelf),
+        "books": [
+            {
+                "id": book.id,
+                "title": book.title,
+                "author": book.author.name if book.author else None,
+            }
+            for book in shelf.books
+        ],
+    }
+
+
+@router.post("/shelves/{shelf_id}/books")
+def add_shelf_books(
+    shelf_id: int,
+    body: ShelfBooksIn,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
+) -> dict[str, Any]:
+    shelf = _owned_shelf(session, user, shelf_id)
+    existing = {book.id for book in shelf.books}
+    for book_id in body.book_ids:
+        book = session.get(Book, book_id)
+        if book_id not in existing and book is not None:
+            shelf.books.append(book)
+    session.commit()
+    session.refresh(shelf)
+    return {**_serialize_shelf(shelf), "book_ids": [b.id for b in shelf.books]}
+
+
+@router.delete("/shelves/{shelf_id}/books")
+def remove_shelf_books(
+    shelf_id: int,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
+    book_ids: str = Query(min_length=1, description="Comma-separated book ids"),
+) -> dict[str, Any]:
+    shelf = _owned_shelf(session, user, shelf_id)
+    ids = {int(part) for part in book_ids.split(",") if part.strip().isdigit()}
+    shelf.books = [b for b in shelf.books if b.id not in ids]
+    session.commit()
+    session.refresh(shelf)
+    return {**_serialize_shelf(shelf), "book_ids": [b.id for b in shelf.books]}
+
+
+@router.delete("/shelves/{shelf_id}")
+def delete_shelf(
+    shelf_id: int,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
+) -> dict[str, bool]:
+    shelf = _owned_shelf(session, user, shelf_id)
+    session.delete(shelf)
+    session.commit()
+    return {"deleted": True}
 
 
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------
