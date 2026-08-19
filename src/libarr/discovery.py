@@ -120,12 +120,17 @@ def import_works(session: Session, works: list[DiscoveryWork], *, monitored: boo
         book = Book(title=work.title, author=author, year=work.year, monitored=monitored)
         session.add(book)
         session.flush()
+        seen_slugs: set[str] = set()
         for subject_name in work.subjects[:5]:
+            slug = subject_slug(subject_name)
+            if slug in seen_slugs:
+                continue  # "Fantasy" + "Fantasy fiction" → one row
+            seen_slugs.add(slug)
             session.add(
                 Subject(
                     book_id=book.id,
                     name=subject_name,
-                    slug=subject_slug(subject_name),
+                    slug=slug,
                     source=work.source,
                 )
             )

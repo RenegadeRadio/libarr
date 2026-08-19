@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import './style.css'
 import AuthorsView from './views/AuthorsView.vue'
+import DiscoveryView from './views/DiscoveryView.vue'
 import LibraryView from './views/LibraryView.vue'
 import LoginView from './views/LoginView.vue'
 import SearchView from './views/SearchView.vue'
@@ -15,6 +16,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: LibraryView, meta: { title: 'Library' } },
     { path: '/search', component: SearchView, meta: { title: 'Search' } },
+    { path: '/discover', component: DiscoveryView, meta: { title: 'Discover' } },
     { path: '/authors', component: AuthorsView, meta: { title: 'Authors' } },
     { path: '/wanted', component: WantedView, meta: { title: 'Wanted' } },
     { path: '/system', component: SystemView, meta: { title: 'System' } },

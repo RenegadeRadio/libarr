@@ -117,6 +117,34 @@ def test_discovery_list_crud(client, db):
 
 
 @respx.mock
+def test_import_works_dedupes_same_slug_subjects(client, db):
+    """ "Fantasy" + "Fantasy fiction" slugify identically → one row each book."""
+    client, db = client
+    with session_factory(db)() as session:
+        from libarr.discovery import DiscoveryWork
+
+        works = [
+            DiscoveryWork(
+                title="The Blade Itself",
+                author="Joe Abercrombie",
+                year=2006,
+                subjects=["Fantasy", "Fantasy fiction", "Epic fantasy"],
+                source="openlibrary",
+                source_key="ol:X",
+            )
+        ]
+        added = import_works(session, works)
+
+    assert added == 1
+    with session_factory(db)() as session:
+        from libarr.models import Book, Subject
+
+        book = session.scalars(select(Book)).one()
+        subjects = session.scalars(select(Subject).where(Subject.book_id == book.id)).all()
+        assert len(subjects) == 2  # fantasy + epic-fantasy
+
+
+@respx.mock
 def test_evaluate_lists_runs_and_tracks(client, db):
     client, db = client
     respx.get(url__startswith="https://openlibrary.org/search.json").mock(

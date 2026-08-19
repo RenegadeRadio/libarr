@@ -69,7 +69,7 @@ class OpenLibraryIndexer:
             params["first_publish_year"] = f"[* TO {year_max}]"
         if language:
             params["language"] = language
-        return self._parse(self._get(params))
+        return self._parse(self._get(params), require_ia=False)
 
     def recent(self, limit: int = 50) -> list[Release]:
         return self._parse(
@@ -78,12 +78,12 @@ class OpenLibraryIndexer:
             )
         )
 
-    def _parse(self, payload: dict[str, Any]) -> list[Release]:
+    def _parse(self, payload: dict[str, Any], *, require_ia: bool = True) -> list[Release]:
         releases: list[Release] = []
         for doc in payload.get("docs", []):
             ia_list = doc.get("ia") or []
             ia = ia_list[0] if ia_list else None
-            if not ia:
+            if require_ia and not ia:
                 continue  # no download available
             authors = doc.get("author_name") or []
             key = doc.get("key")
@@ -91,8 +91,8 @@ class OpenLibraryIndexer:
                 Release(
                     title=str(doc.get("title") or ""),
                     indexer_name=self.name,
-                    download_url=f"https://archive.org/download/{ia}/{ia}.epub",
-                    guid=f"ia:{ia}",
+                    download_url=(f"https://archive.org/download/{ia}/{ia}.epub" if ia else ""),
+                    guid=f"ia:{ia}" if ia else f"ol:{key}",
                     author=str(authors[0]) if authors else None,
                     year=doc.get("first_publish_year"),
                     format="EPUB",
