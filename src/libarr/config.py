@@ -29,3 +29,11 @@ class Settings(BaseSettings):
     # Notifications (Apprise): comma-separated service URLs, e.g.
     # "tgram://bottoken/chatid, ntfy://topic". Empty = notifications off.
     apprise_urls: str = ""
+
+    # Import pipeline (plan 2.4)
+    library_dir: str = "data/books"
+    import_template: str = (
+        "{Author Name}/{Series} - {Book Title} ({Release Year})/"
+        "{Series} - {Book Title} ({Release Year}) - {Author}.{Extension}"
+    )
+    import_mode: str = "hardlink"  # hardlink | copy | move

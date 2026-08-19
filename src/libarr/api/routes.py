@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from libarr.acquisition.import_pipeline import default_import_hook
 from libarr.api.auth import require_user
 from libarr.api.deps import get_session
 from libarr.api.schemas import (
@@ -415,7 +416,7 @@ def trigger_process_queue(
     session: Annotated[Session, Depends(get_session)],
 ) -> dict[str, Any]:
     """Manual queue cycle: grab queued items, watch for completions."""
-    stats = process_queue(session)
+    stats = process_queue(session, import_hook=default_import_hook)
     return {"stats": stats}
 
 
