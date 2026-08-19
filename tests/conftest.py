@@ -36,13 +36,26 @@ def session(db):
 
 
 @pytest.fixture()
-def client(db):
-    """TestClient with its DB session overridden to the migrated tmp engine."""
+def raw_client(db):
+    """TestClient with the DB session overridden, but NOT authenticated."""
     def override():
         with session_factory(db)() as s:
             yield s
 
     app.dependency_overrides[get_session] = override
     with TestClient(app) as test_client:
-        yield test_client, db
+        yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def client(raw_client, db):
+    """Authenticated TestClient: bootstraps an admin and logs in."""
+    raw_client.post(
+        "/api/v1/auth/bootstrap",
+        json={"username": "admin", "password": "hunter2!"},
+    )
+    raw_client.post(
+        "/api/v1/auth/login", json={"username": "admin", "password": "hunter2!"}
+    )
+    yield raw_client, db

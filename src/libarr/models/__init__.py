@@ -138,6 +138,19 @@ class Setting(Base):
     value: Mapped[str] = mapped_column(String(4096), nullable=False)
 
 
+class User(Base):
+    """Application user (plan Task 1.11). Admin bootstraps on first run."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    api_key: Mapped[str | None] = mapped_column(String(64), unique=True)
+    role: Mapped[str] = mapped_column(String(16), default="user", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+
+
 class ReadingProgress(Base):
     """Per-profile reading position for a book (plan Task 1.9).
 
@@ -176,5 +189,5 @@ class MetadataCache(Base):
 
 __all__ = [
     "Author", "Book", "Edition", "File", "MetadataCache", "ReadingProgress",
-    "Series", "Setting", "Subject",
+    "Series", "Setting", "Subject", "User",
 ]

@@ -100,3 +100,23 @@ class ProgressOut(BaseModel):
     position: float
     location: str | None
     updated_at: datetime
+
+
+class LoginBody(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1)
+
+
+class BootstrapBody(LoginBody):
+    pass
+
+
+class BootstrapStatus(BaseModel):
+    needed: bool
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    role: str
+    api_key: str | None

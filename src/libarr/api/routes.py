@@ -1,4 +1,9 @@
-"""HTTP API v1 routes: authors, books, file download, search, OPDS."""
+"""HTTP API v1 routes: authors, books, file download, search, OPDS.
+
+Every route here is behind forced authentication (plan Task 1.11): the
+routers declare `dependencies=[Depends(require_user)]`, so cookie, X-Api-Key
+and HTTP Basic credentials all work. Health + auth endpoints live outside.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +15,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from libarr.api.auth import require_user
 from libarr.api.deps import get_session
 from libarr.api.schemas import (
     AuthorDetail,
@@ -45,7 +51,7 @@ from libarr.metadata.matcher import STOPWORDS
 from libarr.metadata.normalize import normalize_text
 from libarr.models import Author, Book, Edition, ReadingProgress
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_user)])
 
 
 def _book_options() -> tuple[Any, ...]:
@@ -206,7 +212,7 @@ def put_progress(
 # Served at the root (no /api/v1 prefix): e-readers expect /opds.
 
 
-opds_router = APIRouter()
+opds_router = APIRouter(dependencies=[Depends(require_user)])
 
 
 @opds_router.get("/opds")
