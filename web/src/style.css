@@ -7,6 +7,7 @@
   --accent: #4f8cff;
   --accent-soft: rgba(79, 140, 255, 0.12);
   --ok: #4caf7d;
+  --danger: #e05c5c;
 }
 
 * {
@@ -92,12 +93,16 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
-  max-width: 720px;
 }
 
 .card h1 {
   margin: 0 0 8px;
   font-size: 18px;
+}
+
+.card h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
 }
 
 .muted {
@@ -107,4 +112,175 @@ body {
 .status-ok {
   color: var(--ok);
   font-weight: 600;
+}
+
+.error {
+  color: var(--danger);
+}
+
+/* --- Library grid + detail ---------------------------------------------- */
+
+.layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  flex: 1;
+}
+
+.book-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.book-card:hover {
+  border-color: var(--accent);
+}
+
+.cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--border);
+}
+
+.b-title {
+  font-weight: 600;
+  margin-top: 8px;
+  line-height: 1.25;
+}
+
+.b-meta {
+  font-size: 12px;
+}
+
+.detail {
+  width: 340px;
+  position: sticky;
+  top: 70px;
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+}
+
+.download {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--accent-soft);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 2px 8px;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+/* --- Tags / facets ------------------------------------------------------- */
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.tag {
+  background: var(--accent-soft);
+  color: var(--fg);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.tag-btn {
+  cursor: pointer;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.tag-btn:hover {
+  border-color: var(--accent);
+}
+
+.tag-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* --- Forms --------------------------------------------------------------- */
+
+form label {
+  display: block;
+  margin: 10px 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg);
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn {
+  display: inline-block;
+  margin-top: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+.login-card {
+  max-width: 380px;
+  margin: 8vh auto;
+}
+
+.search-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.search-form input[type='text'] {
+  flex: 2;
+  min-width: 220px;
+}
+
+.search-form .year,
+.search-form .lang {
+  flex: 0 0 110px;
+}
+
+.results {
+  margin-top: 12px;
 }

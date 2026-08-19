@@ -1,8 +1,11 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
+
+const route = useRoute()
 
 const nav = [
   { to: '/', label: 'Library' },
+  { to: '/search', label: 'Search' },
   { to: '/authors', label: 'Authors' },
   { to: '/wanted', label: 'Wanted' },
   { to: '/system', label: 'System' },
@@ -11,11 +14,10 @@ const nav = [
 
 <template>
   <div class="shell">
-    <header class="topbar">
+    <header v-if="route.path !== '/login'" class="topbar">
       <div class="brand">
         <span class="logo">📚</span>
         <span class="brand-name">Libarr</span>
-        <span class="tag">v0.1.0 — Phase 0 scaffold</span>
       </div>
       <nav class="nav">
         <RouterLink v-for="item in nav" :key="item.to" :to="item.to" class="nav-link">

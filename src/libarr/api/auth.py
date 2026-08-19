@@ -108,11 +108,10 @@ def get_current_user(
 
 def require_user(user: Annotated[User | None, Depends(get_current_user)]) -> User:
     if user is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Basic"},
-        )
+        # NOTE: no WWW-Authenticate header here — Chromium hangs same-origin
+        # fetches on 401+Basic challenges (headless proved it). OPDS clients
+        # retry with Basic credentials on a bare 401 just fine.
+        raise HTTPException(status_code=401, detail="Authentication required")
     return user
 
 
