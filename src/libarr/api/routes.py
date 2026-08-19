@@ -16,17 +16,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from libarr.acquisition.import_pipeline import default_import_hook
+from libarr.acquisition.wanted import wanted_cutoff, wanted_missing
 from libarr.api.auth import require_user
 from libarr.api.deps import get_session
 from libarr.api.schemas import (
     AuthorDetail,
     AuthorOut,
+    AuthorPatch,
     BookDetail,
     BookOut,
     BookPatch,
     ClientIn,
     ClientOut,
     ClientTestResult,
+    HistoryOut,
     IndexerIn,
     IndexerOut,
     IndexerTestResult,
@@ -40,6 +43,7 @@ from libarr.api.serializers import (
     serialize_book,
     serialize_book_detail,
     serialize_client,
+    serialize_history,
     serialize_indexer,
 )
 from libarr.clients.base import DownloadError
@@ -62,9 +66,18 @@ from libarr.library.opds import (
 from libarr.library.search import search_books
 from libarr.metadata.matcher import STOPWORDS
 from libarr.metadata.normalize import normalize_text
-from libarr.models import Author, Book, DownloadClientRow, Edition, Indexer, ReadingProgress
+from libarr.models import (
+    Author,
+    Book,
+    DownloadClientRow,
+    Edition,
+    HistoryEvent,
+    Indexer,
+    ReadingProgress,
+)
 from libarr.tasks.download_watch import process_queue
 from libarr.tasks.rss import rss_sync
+from libarr.tasks.search import search_now
 
 router = APIRouter(dependencies=[Depends(require_user)])
 
@@ -99,6 +112,22 @@ def get_author(author_id: int, session: Annotated[Session, Depends(get_session)]
     author = session.get(Author, author_id, options=[selectinload(Author.books)])
     if author is None:
         raise HTTPException(status_code=404, detail="Author not found")
+    return serialize_author_detail(author)
+
+
+@router.patch("/authors/{author_id}", response_model=AuthorDetail)
+def patch_author(
+    author_id: int,
+    body: AuthorPatch,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    """Monitor/unmonitor an author (plan 2.5.3 — author-level defaults)."""
+    author = session.get(Author, author_id, options=[selectinload(Author.books)])
+    if author is None:
+        raise HTTPException(status_code=404, detail="Author not found")
+    author.monitored = body.monitored
+    session.commit()
+    session.refresh(author)
     return serialize_author_detail(author)
 
 
@@ -418,6 +447,50 @@ def trigger_process_queue(
     """Manual queue cycle: grab queued items, watch for completions."""
     stats = process_queue(session, import_hook=default_import_hook)
     return {"stats": stats}
+
+
+# --- Wanted / history (plan 2.5) --------------------------------------------
+
+
+@router.get("/wanted/missing", response_model=list[BookOut])
+def wanted_missing_endpoint(
+    session: Annotated[Session, Depends(get_session)],
+) -> list[dict[str, Any]]:
+    return [serialize_book(book) for book in wanted_missing(session)]
+
+
+@router.get("/wanted/cutoff", response_model=list[BookOut])
+def wanted_cutoff_endpoint(
+    session: Annotated[Session, Depends(get_session)],
+) -> list[dict[str, Any]]:
+    return [serialize_book(book) for book in wanted_cutoff(session)]
+
+
+@router.post("/books/{book_id}/search")
+def book_search_now(
+    book_id: int, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, Any]:
+    """Search every indexer for this book right now; queue the winner."""
+    book = session.get(Book, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return search_now(session, book)
+
+
+@router.get("/history", response_model=list[HistoryOut])
+def history(
+    session: Annotated[Session, Depends(get_session)],
+    kind: str | None = None,
+    book_id: int | None = None,
+    limit: int = Query(100, ge=1, le=500),
+) -> list[dict[str, Any]]:
+    stmt = select(HistoryEvent).order_by(HistoryEvent.created_at.desc(), HistoryEvent.id.desc())
+    if kind:
+        stmt = stmt.where(HistoryEvent.kind == kind)
+    if book_id is not None:
+        stmt = stmt.where(HistoryEvent.book_id == book_id)
+    events = session.scalars(stmt.limit(limit)).all()
+    return [serialize_history(event) for event in events]
 
 
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------

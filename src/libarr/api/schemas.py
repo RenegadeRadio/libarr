@@ -43,6 +43,7 @@ class AuthorDetail(BaseModel):
     sort_name: str | None
     biography: str | None
     ol_key: str | None
+    monitored: bool = False
     book_count: int = 0
 
 
@@ -166,3 +167,16 @@ class ClientOut(ClientIn):
 class ClientTestResult(BaseModel):
     ok: bool
     error: str | None
+
+
+class AuthorPatch(BaseModel):
+    monitored: bool
+
+
+class HistoryOut(BaseModel):
+    id: int
+    book_id: int | None
+    kind: str
+    title: str
+    details: str | None
+    created_at: datetime

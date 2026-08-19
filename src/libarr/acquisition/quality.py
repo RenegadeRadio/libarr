@@ -33,7 +33,7 @@ _CUSTOM_MATCHERS: list[tuple[str, int, re.Pattern[str]]] = [
 
 @dataclass(slots=True)
 class QualityProfile:
-    name: str
+    name: str = "Standard"
     allowed_formats: tuple[str, ...] = ("EPUB", "AZW3", "MOBI", "PDF")
     cutoff_format: str | None = "EPUB"
     custom_formats: tuple[str, ...] = ("+Retail", "+DRM-Free", "-Sample", "-Unknown")

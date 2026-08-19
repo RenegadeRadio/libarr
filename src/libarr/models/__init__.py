@@ -35,6 +35,7 @@ class Author(Base):
     ol_key: Mapped[str | None] = mapped_column(String(64), unique=True)
     cover_path: Mapped[str | None] = mapped_column(String(1024))
     metadata_json: Mapped[str | None] = mapped_column(Text)
+    monitored: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=_now, onupdate=_now, nullable=False
@@ -203,6 +204,37 @@ class QueueItem(Base):
     )
 
 
+class HistoryEvent(Base):
+    """Pipeline event log (plan 2.5): grab / import / upgrade / fail / discovery."""
+
+    __tablename__ = "history_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    book_id: Mapped[int | None] = mapped_column(ForeignKey("books.id"))
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    details: Mapped[str | None] = mapped_column(String(1024))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+
+
+class DiscoveryList(Base):
+    """A saved discovery/import list query (plan 2.6.4), evaluated on schedule."""
+
+    __tablename__ = "discovery_lists"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    query: Mapped[str] = mapped_column(
+        String(1024), nullable=False
+    )  # JSON: q/genre/year_min/year_max/language
+    schedule_days: Mapped[int] = mapped_column(default=7)
+    max_per_run: Mapped[int] = mapped_column(default=10)
+    auto_monitor: Mapped[bool] = mapped_column(default=True)
+    enabled: Mapped[bool] = mapped_column(default=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+
+
 class User(Base):
     """Application user (plan Task 1.11). Admin bootstraps on first run."""
 
@@ -255,9 +287,11 @@ class MetadataCache(Base):
 __all__ = [
     "Author",
     "Book",
+    "DiscoveryList",
     "DownloadClientRow",
     "Edition",
     "File",
+    "HistoryEvent",
     "Indexer",
     "MetadataCache",
     "QueueItem",

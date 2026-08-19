@@ -24,6 +24,7 @@ from libarr.acquisition.parser import parse_book_filename
 from libarr.acquisition.wanted import normalize_release_title
 from libarr.clients.base import ClientItem
 from libarr.config import Settings
+from libarr.history import record
 from libarr.metadata.normalize import normalize_text
 from libarr.models import Book, DownloadClientRow, Edition, File, QueueItem
 from libarr.notify import notify
@@ -193,6 +194,7 @@ def import_download(
         return _fail(session, queue_item, library_root, f"link/copy failed: {exc}")
 
     edition = session.scalars(select(Edition).where(Edition.book_id == book.id)).first()
+    had_files = edition is not None and len(edition.files) > 0
     if edition is None:
         edition = Edition(book_id=book.id, format=src.suffix[1:].upper())
         session.add(edition)
@@ -209,6 +211,14 @@ def import_download(
     queue_item.status = "imported"
     queue_item.error = None
     session.commit()
+    record(
+        session,
+        kind="upgrade" if had_files else "import",
+        title=book.title,
+        book_id=book.id,
+        details=str(dest),
+    )
+    session.commit()
     notify("Book imported", f"{book.title} → {dest}")
     return ImportResult(ok=True, destination=dest, hardlinked=hardlinked)
 
@@ -218,6 +228,8 @@ def _fail(session: Session, queue_item: QueueItem, library_root: Path, error: st
     quarantine.mkdir(parents=True, exist_ok=True)
     queue_item.status = "failed"
     queue_item.error = error
+    session.commit()
+    record(session, kind="fail", title=queue_item.title, book_id=queue_item.book_id, details=error)
     session.commit()
     notify("Import failed", error)
     return ImportResult(ok=False, error=error)

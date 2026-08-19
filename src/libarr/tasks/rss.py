@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from libarr.acquisition.wanted import match_release
+from libarr.history import record
 from libarr.indexers.base import IndexerError
 from libarr.indexers.registry import build_indexer
 from libarr.models import Indexer, QueueItem
@@ -57,6 +58,13 @@ def rss_sync(session: Session) -> dict[str, int | str]:
                     format=release.format,
                     size_bytes=release.size_bytes,
                 )
+            )
+            record(
+                session,
+                kind="grab",
+                title=release.title,
+                book_id=book.id,
+                details=f"queued from {row.name}",
             )
             queued += 1
         session.commit()
