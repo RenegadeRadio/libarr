@@ -162,6 +162,22 @@ def test_enrich_idempotent_subjects(session):
 
 
 @respx.mock
+def test_enrich_dedupes_same_slug_subjects(session):
+    details = {**OL_DETAILS["ISBN:9780441172719"]["details"]}
+    details["subjects"] = [{"name": "Science fiction"}, {"name": "Science-fiction"}]
+    respx.get(url__startswith="https://openlibrary.org/api/books").mock(
+        return_value=Response(200, json={"ISBN:9780441172719": {"details": details}})
+    )
+    _mock_ol_work()
+    book = _book_with_isbn(session)
+
+    enrich_book(session, book)
+
+    assert len(book.subjects) == 1
+    assert book.subjects[0].slug == "science-fiction"
+
+
+@respx.mock
 def test_enrich_library_batch(session):
     respx.get(url__startswith="https://openlibrary.org/api/books").mock(
         return_value=Response(

@@ -86,14 +86,12 @@ def _apply(
         if not edition.publisher:
             edition.publisher = meta.publisher
 
+    seen: set[str] = {s.slug for s in book.subjects}
     for subject_name in meta.subjects:
         slug = slugify(subject_name)
-        exists = any(s.slug == slug for s in book.subjects)
-        if not exists:
-            session.add(
-                Subject(
-                    book_id=book.id, name=subject_name, slug=slug, source=source
-                )
-            )
+        if slug in seen:
+            continue  # dedupe across near-identical provider names ("Sci-fi" vs "Science fiction")
+        seen.add(slug)
+        session.add(Subject(book_id=book.id, name=subject_name, slug=slug, source=source))
     session.flush()
     reindex_book(session, book.id)
