@@ -23,6 +23,9 @@ from libarr.api.schemas import (
     BookDetail,
     BookOut,
     BookPatch,
+    ClientIn,
+    ClientOut,
+    ClientTestResult,
     IndexerIn,
     IndexerOut,
     IndexerTestResult,
@@ -35,8 +38,11 @@ from libarr.api.serializers import (
     serialize_author_detail,
     serialize_book,
     serialize_book_detail,
+    serialize_client,
     serialize_indexer,
 )
+from libarr.clients.base import DownloadError
+from libarr.clients.registry import CLIENT_KINDS, build_client
 from libarr.fts import reindex_book
 from libarr.indexers.base import IndexerError
 from libarr.indexers.registry import SUPPORTED_KINDS, build_indexer
@@ -55,7 +61,8 @@ from libarr.library.opds import (
 from libarr.library.search import search_books
 from libarr.metadata.matcher import STOPWORDS
 from libarr.metadata.normalize import normalize_text
-from libarr.models import Author, Book, Edition, Indexer, ReadingProgress
+from libarr.models import Author, Book, DownloadClientRow, Edition, Indexer, ReadingProgress
+from libarr.tasks.download_watch import process_queue
 from libarr.tasks.rss import rss_sync
 
 router = APIRouter(dependencies=[Depends(require_user)])
@@ -311,6 +318,105 @@ def trigger_rss_sync(
     stats = rss_sync(session)
     queued = sum(v for v in stats.values() if isinstance(v, int))
     return {"indexers": stats, "queued": queued}
+
+
+# --- Download clients (plan 2.2) --------------------------------------------
+
+
+@router.get("/clients", response_model=list[ClientOut])
+def list_clients(
+    session: Annotated[Session, Depends(get_session)],
+) -> list[dict[str, Any]]:
+    rows = session.scalars(
+        select(DownloadClientRow).order_by(DownloadClientRow.priority, DownloadClientRow.name)
+    ).all()
+    return [serialize_client(row) for row in rows]
+
+
+@router.post("/clients", response_model=ClientOut)
+def create_client(
+    body: ClientIn, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, Any]:
+    if body.kind not in CLIENT_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown client kind. Supported: {', '.join(CLIENT_KINDS)}",
+        )
+    exists = session.scalars(
+        select(DownloadClientRow).where(DownloadClientRow.name == body.name)
+    ).first()
+    if exists is not None:
+        raise HTTPException(status_code=409, detail="Client name already exists")
+    row = DownloadClientRow(**body.model_dump())
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return serialize_client(row)
+
+
+@router.get("/clients/{client_id}", response_model=ClientOut)
+def get_client(client_id: int, session: Annotated[Session, Depends(get_session)]) -> dict[str, Any]:
+    row = session.get(DownloadClientRow, client_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Download client not found")
+    return serialize_client(row)
+
+
+@router.put("/clients/{client_id}", response_model=ClientOut)
+def update_client(
+    client_id: int,
+    body: ClientIn,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    row = session.get(DownloadClientRow, client_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Download client not found")
+    if body.kind not in CLIENT_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown client kind. Supported: {', '.join(CLIENT_KINDS)}",
+        )
+    for field, value in body.model_dump().items():
+        setattr(row, field, value)
+    session.commit()
+    session.refresh(row)
+    return serialize_client(row)
+
+
+@router.delete("/clients/{client_id}")
+def delete_client(
+    client_id: int, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, str]:
+    row = session.get(DownloadClientRow, client_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Download client not found")
+    session.delete(row)
+    session.commit()
+    return {"status": "ok"}
+
+
+@router.post("/clients/{client_id}/test", response_model=ClientTestResult)
+def test_client(
+    client_id: int, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, Any]:
+    row = session.get(DownloadClientRow, client_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Download client not found")
+    try:
+        client = build_client(row)
+        ok = client.test()
+        return {"ok": ok, "error": None}
+    except DownloadError as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+@router.post("/system/process-queue")
+def trigger_process_queue(
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    """Manual queue cycle: grab queued items, watch for completions."""
+    stats = process_queue(session)
+    return {"stats": stats}
 
 
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------

@@ -156,6 +156,27 @@ class Indexer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
 
 
+class DownloadClientRow(Base):
+    """A configured download client (plan 2.2): qBittorrent/Deluge/Transmission/SABnzbd/NZBGet."""
+
+    __tablename__ = "download_clients"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    url: Mapped[str | None] = mapped_column(String(512))
+    username: Mapped[str | None] = mapped_column(String(128))
+    password: Mapped[str | None] = mapped_column(String(255))
+    api_key: Mapped[str | None] = mapped_column(String(255))
+    enabled: Mapped[bool] = mapped_column(default=True)
+    priority: Mapped[int] = mapped_column(default=100)
+    # Remote Path Mapping: paths as the client sees them → paths on the
+    # library host (used by the import pipeline to find completed files).
+    remote_path: Mapped[str | None] = mapped_column(String(512))
+    local_path: Mapped[str | None] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+
+
 class QueueItem(Base):
     """A grabbed release awaiting download/import (plan 2.1.3).
 
@@ -172,6 +193,8 @@ class QueueItem(Base):
     download_url: Mapped[str | None] = mapped_column(String(1024))
     format: Mapped[str | None] = mapped_column(String(16))
     size_bytes: Mapped[int | None] = mapped_column()
+    client_name: Mapped[str | None] = mapped_column(String(64))
+    client_download_id: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(16), default="queued", nullable=False)
     error: Mapped[str | None] = mapped_column(String(512))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
@@ -232,6 +255,7 @@ class MetadataCache(Base):
 __all__ = [
     "Author",
     "Book",
+    "DownloadClientRow",
     "Edition",
     "File",
     "Indexer",

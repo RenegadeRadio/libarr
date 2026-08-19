@@ -143,3 +143,26 @@ class IndexerTestResult(BaseModel):
     ok: bool
     caps: dict[str, Any] | None
     error: str | None
+
+
+class ClientIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    kind: str = Field(min_length=1, max_length=32)
+    url: str | None = Field(default=None, max_length=512)
+    username: str | None = Field(default=None, max_length=128)
+    password: str | None = Field(default=None, max_length=255)
+    api_key: str | None = Field(default=None, max_length=255)
+    enabled: bool = True
+    priority: int = Field(default=100, ge=0, le=1000)
+    remote_path: str | None = Field(default=None, max_length=512)
+    local_path: str | None = Field(default=None, max_length=512)
+
+
+class ClientOut(ClientIn):
+    id: int
+    created_at: datetime
+
+
+class ClientTestResult(BaseModel):
+    ok: bool
+    error: str | None
