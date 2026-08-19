@@ -358,11 +358,24 @@ def handle_message(session: Session, message: str) -> dict[str, Any]:
     if intent.kind == "author" and intent.query:
         works = search_works(session, q=f"author:{intent.query}", limit=limit)
     elif intent.themes:
-        # Keep the query tight — OL keyword search degrades with long phrases.
-        query = " ".join(intent.themes[:3])
-        works = search_works(session, q=query, limit=limit)
-        if not works and len(intent.themes) > 1:
-            works = search_works(session, q=intent.themes[0], limit=limit)
+        # Subject search is far more reliable than keyword phrases for theme
+        # discovery (OL keyword search degrades on multi-term phrases).
+        works = []
+        seen: set[tuple[str, str]] = set()
+        for theme in intent.themes[:2]:
+            for work in search_works(session, genre=theme, limit=limit):
+                key = (work.title, work.author or "")
+                if key not in seen:
+                    seen.add(key)
+                    works.append(work)
+            if len(works) >= limit:
+                break
+        if not works:  # subject search came up empty → keyword fallback
+            query = " ".join(intent.themes[:3])
+            works = search_works(session, q=query, limit=limit)
+            if not works and len(intent.themes) > 1:
+                works = search_works(session, q=intent.themes[0], limit=limit)
+        works = works[:limit]
     elif intent.genre:
         works = search_works(
             session,
