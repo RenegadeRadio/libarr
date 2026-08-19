@@ -14,6 +14,7 @@ from libarr.api.routes import opds_router
 from libarr.api.routes import router as api_router
 from libarr.config import Settings
 from libarr.db import make_engine
+from libarr.koreader import router as koreader_router
 from libarr.scheduler import scheduler_loop
 
 
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(api_router, prefix="/api/v1")
     app.include_router(opds_router)  # OPDS lives at the root for e-readers
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(koreader_router)  # KOReader sync at /koreader (no auth wall)
 
     @app.get("/api/v1/health")
     def health() -> dict[str, str]:

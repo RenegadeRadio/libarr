@@ -241,6 +241,10 @@ class ConversionOut(BaseModel):
     created_at: datetime
 
 
+class SendToKindleIn(BaseModel):
+    to: str = Field(min_length=1, max_length=255)
+
+
 class QueueOut(BaseModel):
     id: int
     book_id: int | None

@@ -46,13 +46,18 @@ def _convert_one(session: Session, job: ConversionJob, out_dir: Path) -> None:
         return
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    dest = out_dir / f"{source.stem}.{job.target_format.lower()}"
-
     job.status = "working"
     session.commit()
     try:
+        if job.target_format == "KEPUB":
+            # Kobo's format: kepubify subprocess (KEPUB is not plain ebook-convert).
+            dest = out_dir / f"{source.stem}_converted.kepub.epub"
+            command = ["kepubify", "--output-dir", str(out_dir), str(source)]
+        else:
+            dest = out_dir / f"{source.stem}.{job.target_format.lower()}"
+            command = ["ebook-convert", str(source), str(dest)]
         result = subprocess.run(
-            ["ebook-convert", str(source), str(dest)],
+            command,
             capture_output=True,
             text=True,
             timeout=600,
@@ -60,7 +65,7 @@ def _convert_one(session: Session, job: ConversionJob, out_dir: Path) -> None:
         )
     except Exception as exc:  # noqa: BLE001 — a worker job fails, never crashes the cycle
         job.status = "failed"
-        job.error = f"ebook-convert did not run: {exc}"
+        job.error = f"converter did not run: {exc}"
         session.commit()
         return
 

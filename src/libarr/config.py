@@ -46,3 +46,10 @@ class Settings(BaseSettings):
 
     # Conversion worker (Phase 3): ebook-convert output directory.
     conversion_out_dir: str = "data/converted"
+
+    # Send-to-Kindle (Phase 3): SMTP settings for the email bridge.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""

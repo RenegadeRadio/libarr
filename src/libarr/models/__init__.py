@@ -276,6 +276,25 @@ class ConversionJob(Base):
     )
 
 
+class KoreaderProgress(Base):
+    """Per-user reading progress synced from KOReader devices (Phase 3)."""
+
+    __tablename__ = "koreader_progress"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    document: Mapped[str] = mapped_column(String(512), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(512))
+    progress: Mapped[float] = mapped_column(default=0.0, nullable=False)
+    device: Mapped[str | None] = mapped_column(String(64))
+    client: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_now, onupdate=_now, nullable=False
+    )
+
+    __table_args__ = (UniqueConstraint("user_id", "document", name="uq_koreader_user_doc"),)
+
+
 class User(Base):
     """Application user (plan Task 1.11). Admin bootstraps on first run."""
 
@@ -340,6 +359,7 @@ __all__ = [
     "File",
     "HistoryEvent",
     "Indexer",
+    "KoreaderProgress",
     "MetadataCache",
     "QueueItem",
     "ReadingProgress",

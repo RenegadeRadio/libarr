@@ -45,6 +45,7 @@ from libarr.api.schemas import (
     QueueOut,
     RequestIn,
     SearchResult,
+    SendToKindleIn,
 )
 from libarr.api.serializers import (
     serialize_author,
@@ -57,6 +58,7 @@ from libarr.api.serializers import (
 )
 from libarr.clients.base import DownloadError
 from libarr.clients.registry import CLIENT_KINDS, build_client
+from libarr.config import Settings
 from libarr.discovery import DiscoveryWork, evaluate_lists, import_works, search_works
 from libarr.fts import reindex_book
 from libarr.history import record
@@ -780,6 +782,45 @@ def enqueue_book_conversion(
         "error": job.error,
         "created_at": job.created_at,
     }
+
+
+@router.post("/books/{book_id}/send-to-kindle")
+def send_book_to_kindle(
+    book_id: int,
+    body: SendToKindleIn,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    """Email the book's best imported file to a @kindle.com address."""
+    from libarr.acquisition.wanted import best_imported_format
+    from libarr.kindle import KindleError, send_to_kindle
+
+    book = session.get(Book, book_id, options=[selectinload(Book.editions)])
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    best = best_imported_format(session, book)
+    if best is None:
+        raise HTTPException(status_code=400, detail="Book has no imported files")
+    file_path = None
+    for edition in book.editions:
+        for file_row in edition.files:
+            if file_row.format == best:
+                file_path = file_row.path
+                break
+        if file_path:
+            break
+    if not file_path:
+        raise HTTPException(status_code=400, detail="No importable file found")
+
+    try:
+        send_to_kindle(
+            Settings(),
+            to=body.to,
+            file_path=Path(file_path),
+            title=book.title,
+        )
+    except KindleError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"sent": True, "to": body.to, "title": book.title}
 
 
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------
