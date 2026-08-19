@@ -10,9 +10,12 @@ and mismatched/unfindable downloads go to the quarantine folder.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import re
 import shutil
+import tarfile
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,6 +33,9 @@ from libarr.models import Book, DownloadClientRow, Edition, File, QueueItem
 from libarr.notify import notify
 
 EBOOK_EXTENSIONS = {".epub", ".pdf", ".mobi", ".azw3", ".fb2", ".m4b", ".mp3"}
+ARCHIVE_EXTENSIONS = {".zip", ".tar", ".gz", ".bz2"}
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TEMPLATE = (
     "{Author Name}/{Series} - {Book Title} ({Release Year})/"
@@ -93,9 +99,50 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _safe_extract_zip(archive: Path, target: Path) -> None:
+    """Extract with zip-slip protection: every member must stay in target."""
+    with zipfile.ZipFile(archive) as zf:
+        for member in zf.infolist():
+            dest = (target / member.filename).resolve()
+            if not dest.is_relative_to(target.resolve()):
+                raise zipfile.BadZipFile(f"unsafe member path: {member.filename}")
+        zf.extractall(target)
+
+
+def _safe_extract_tar(archive: Path, target: Path) -> None:
+    with tarfile.open(archive) as tf:
+        try:
+            tf.extractall(target, filter="data")  # Python 3.12+ tar-slip guard
+        except TypeError:
+            tf.extractall(target)
+
+
+def _expand_archives(root: Path) -> None:
+    """Unpack archive payloads (torrent releases arrive zipped) in place.
+
+    Unpackerr-equivalent (Phase 3): each archive is extracted to a sibling
+    `<name>.unpacked/` directory; plain ebook files are untouched.
+    """
+    for archive in list(root.rglob("*")):
+        if not archive.is_file() or archive.suffix.lower() not in ARCHIVE_EXTENSIONS:
+            continue
+        target = root / f"{archive.name}.unpacked"
+        if target.exists():
+            continue
+        target.mkdir(parents=True, exist_ok=True)
+        try:
+            if archive.suffix.lower() == ".zip":
+                _safe_extract_zip(archive, target)
+            else:
+                _safe_extract_tar(archive, target)
+        except (zipfile.BadZipFile, tarfile.TarError, OSError) as exc:
+            logger.warning("unpack failed for %s: %s", archive.name, exc)
+
+
 def _locate_files(client_item: ClientItem, client_row: DownloadClientRow | None) -> list[Path]:
     """Find completed ebook files under the client-reported path, applying
-    the Remote Path Mapping (client path → library-host path)."""
+    the Remote Path Mapping (client path → library-host path) and expanding
+    archive payloads."""
     save = client_item.save_path or ""
     if client_row and client_row.remote_path and save.startswith(client_row.remote_path):
         relative = Path(save).relative_to(client_row.remote_path)
@@ -103,6 +150,7 @@ def _locate_files(client_item: ClientItem, client_row: DownloadClientRow | None)
     root = Path(save)
     if not root.is_dir():
         return []
+    _expand_archives(root)
     return sorted(
         p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in EBOOK_EXTENSIONS
     )

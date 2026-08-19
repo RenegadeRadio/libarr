@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy import select
@@ -13,10 +14,22 @@ from libarr.acquisition.wanted import DEFAULT_PROFILE
 from libarr.history import record
 from libarr.indexers.base import IndexerError
 from libarr.indexers.registry import build_indexer
-from libarr.models import Book, Indexer, QueueItem
+from libarr.models import Book, Indexer, QueueItem, User
+from libarr.notify import notify
 
 
-def search_now(session: Session, book: Book) -> dict[str, Any]:
+def _user_wants_search_notifications(user: User | None) -> bool:
+    """Per-user notification prefs (Phase 3): JSON list of event kinds."""
+    if user is None:
+        return True  # scheduler/background context: notify by default
+    try:
+        events = json.loads(user.notify_events or "[]")
+    except json.JSONDecodeError:
+        events = []
+    return "search" in events
+
+
+def search_now(session: Session, book: Book, *, user: User | None = None) -> dict[str, Any]:
     """Search every enabled indexer for the book and queue the best release.
 
     Returns {"queued": bool, "winner": title | None, "already_queued": bool}.
@@ -39,12 +52,16 @@ def search_now(session: Session, book: Book) -> dict[str, Any]:
 
     winner = pick_best(candidates, DEFAULT_PROFILE)
     if winner is None:
+        if _user_wants_search_notifications(user):
+            notify("Search complete", f"No release found for {book.title}")
         return {"queued": False, "winner": None, "already_queued": False}
 
     duplicate = session.scalars(
         select(QueueItem).where(QueueItem.release_guid == winner.release.guid)
     ).first()
     if duplicate is not None:
+        if _user_wants_search_notifications(user):
+            notify("Search complete", f"{book.title} is already queued")
         return {"queued": False, "winner": winner.release.title, "already_queued": True}
 
     session.add(
@@ -66,4 +83,6 @@ def search_now(session: Session, book: Book) -> dict[str, Any]:
         details=f"search-now from {winner.release.indexer_name}",
     )
     session.commit()
+    if _user_wants_search_notifications(user):
+        notify("Search complete", f"Queued: {winner.release.title}")
     return {"queued": True, "winner": winner.release.title, "already_queued": False}

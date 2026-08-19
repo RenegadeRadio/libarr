@@ -219,3 +219,23 @@ class DiscoveryListOut(BaseModel):
     enabled: bool
     last_run_at: datetime | None
     created_at: datetime
+
+
+class RequestIn(BaseModel):
+    title: str = Field(min_length=1, max_length=512)
+    author: str | None = Field(default=None, max_length=255)
+    isbn: str | None = Field(default=None, max_length=32)
+
+
+class ConversionIn(BaseModel):
+    target_format: str = Field(pattern=r"^(AZW3|KEPUB|PDF|MOBI)$")
+
+
+class ConversionOut(BaseModel):
+    id: int
+    file_id: int
+    target_format: str
+    status: str
+    output_path: str | None
+    error: str | None
+    created_at: datetime

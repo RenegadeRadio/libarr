@@ -30,6 +30,8 @@ from libarr.api.schemas import (
     ClientIn,
     ClientOut,
     ClientTestResult,
+    ConversionIn,
+    ConversionOut,
     DiscoveryImportBody,
     DiscoveryListIn,
     DiscoveryListOut,
@@ -40,6 +42,7 @@ from libarr.api.schemas import (
     IndexerTestResult,
     ProgressOut,
     ProgressPut,
+    RequestIn,
     SearchResult,
 )
 from libarr.api.serializers import (
@@ -53,8 +56,9 @@ from libarr.api.serializers import (
 )
 from libarr.clients.base import DownloadError
 from libarr.clients.registry import CLIENT_KINDS, build_client
-from libarr.discovery import evaluate_lists, import_works, search_works
+from libarr.discovery import DiscoveryWork, evaluate_lists, import_works, search_works
 from libarr.fts import reindex_book
+from libarr.history import record
 from libarr.indexers.base import IndexerError
 from libarr.indexers.registry import SUPPORTED_KINDS, build_indexer
 from libarr.library.covers import cover_media_type, resolve_cover
@@ -75,12 +79,14 @@ from libarr.metadata.normalize import normalize_text
 from libarr.models import (
     Author,
     Book,
+    ConversionJob,
     DiscoveryList,
     DownloadClientRow,
     Edition,
     HistoryEvent,
     Indexer,
     ReadingProgress,
+    User,
 )
 from libarr.tasks.download_watch import process_queue
 from libarr.tasks.rss import rss_sync
@@ -475,13 +481,15 @@ def wanted_cutoff_endpoint(
 
 @router.post("/books/{book_id}/search")
 def book_search_now(
-    book_id: int, session: Annotated[Session, Depends(get_session)]
+    book_id: int,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
 ) -> dict[str, Any]:
     """Search every indexer for this book right now; queue the winner."""
     book = session.get(Book, book_id)
     if book is None:
         raise HTTPException(status_code=404, detail="Book not found")
-    return search_now(session, book)
+    return search_now(session, book, user=user)
 
 
 @router.get("/history", response_model=list[HistoryOut])
@@ -621,6 +629,120 @@ def trigger_discovery_lists(
     """Evaluate every enabled discovery list (scheduler will own cadence)."""
     stats = evaluate_lists(session)
     return {"lists": stats}
+
+
+# --- Requests / conversion (Phase 3) -----------------------------------------
+
+
+@router.post("/requests")
+def create_request(
+    body: RequestIn,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(require_user)],
+) -> dict[str, Any]:
+    """Overseerr-style: request a book → auto-add (monitored) → search now."""
+    book = None
+    if body.isbn:
+        from libarr.metadata.providers.openlibrary import OpenLibraryProvider
+
+        meta = OpenLibraryProvider(session).lookup_by_isbn(body.isbn)
+        if meta is not None and meta.title:
+            works = [
+                DiscoveryWork(
+                    title=meta.title,
+                    author=meta.authors[0] if meta.authors else None,
+                    year=meta.year,
+                    subjects=meta.subjects or [],
+                    source="openlibrary",
+                    source_key=meta.work_key or body.isbn,
+                )
+            ]
+            import_works(session, works, monitored=True)
+            book = _find_book(session, meta.title, meta.authors[0] if meta.authors else None)
+    if book is None:
+        works = search_works(session, q=body.title, genre=None, limit=1)
+        if works:
+            import_works(session, works, monitored=True)
+            book = _find_book(session, works[0].title, works[0].author)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Could not resolve the requested book")
+
+    record(session, kind="request", title=book.title, book_id=book.id, details="user request")
+    session.commit()
+    result = search_now(session, book, user=user)
+    return {"status": "ok", "book_id": book.id, "title": book.title, **result}
+
+
+def _find_book(session: Session, title: str, author: str | None) -> Book | None:
+    from libarr.metadata.normalize import normalize_text
+
+    books = session.scalars(select(Book)).all()
+    for book in books:
+        if normalize_text(book.title) == normalize_text(title) and (
+            author is None
+            or (book.author and normalize_text(book.author.name) == normalize_text(author))
+        ):
+            return book
+    return None
+
+
+@router.get("/conversions", response_model=list[ConversionOut])
+def list_conversions(
+    session: Annotated[Session, Depends(get_session)],
+    limit: int = Query(50, ge=1, le=200),
+) -> list[dict[str, Any]]:
+    jobs = session.scalars(
+        select(ConversionJob).order_by(ConversionJob.id.desc()).limit(limit)
+    ).all()
+    return [
+        {
+            "id": job.id,
+            "file_id": job.file_id,
+            "target_format": job.target_format,
+            "status": job.status,
+            "output_path": job.output_path,
+            "error": job.error,
+            "created_at": job.created_at,
+        }
+        for job in jobs
+    ]
+
+
+@router.post("/books/{book_id}/convert", response_model=ConversionOut)
+def enqueue_book_conversion(
+    book_id: int,
+    body: ConversionIn,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    """Convert the book's best imported file to a device format."""
+    from libarr.acquisition.wanted import best_imported_format
+    from libarr.conversion import enqueue_conversion
+
+    book = session.get(Book, book_id, options=[selectinload(Book.editions)])
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    best = best_imported_format(session, book)
+    if best is None:
+        raise HTTPException(status_code=400, detail="Book has no imported files")
+    file_row = None
+    for edition in book.editions:
+        for file_row in edition.files:
+            if file_row.format == best:
+                break
+        if file_row and file_row.format == best:
+            break
+    if file_row is None:
+        raise HTTPException(status_code=404, detail="No importable file found")
+    job = enqueue_conversion(session, file_row, body.target_format)
+    return {
+        "id": job.id,
+        "file_id": job.file_id,
+        "target_format": job.target_format,
+        "status": job.status,
+        "output_path": job.output_path,
+        "error": job.error,
+        "created_at": job.created_at,
+    }
 
 
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------

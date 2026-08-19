@@ -45,8 +45,11 @@ class OpenLibraryIndexer:
         except httpx.HTTPError as exc:
             raise IndexerError(f"{self.name}: {exc}") from exc
 
-    def search(self, q: str) -> list[Release]:
-        return self._parse(self._get({"q": q, "limit": "50", "fields": _FIELDS}))
+    def search(self, q: str, *, require_download: bool = True) -> list[Release]:
+        return self._parse(
+            self._get({"q": q, "limit": "50", "fields": _FIELDS}),
+            require_ia=require_download,
+        )
 
     def search_subject(
         self,

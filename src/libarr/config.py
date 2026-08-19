@@ -43,3 +43,6 @@ class Settings(BaseSettings):
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 300
     scheduler_jitter_seconds: int = 60
+
+    # Conversion worker (Phase 3): ebook-convert output directory.
+    conversion_out_dir: str = "data/converted"

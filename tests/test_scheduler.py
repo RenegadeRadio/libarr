@@ -43,7 +43,7 @@ def test_run_cycles_runs_all_jobs(client, db):
 
     stats = run_cycles(db)
 
-    assert set(stats) == {"rss", "queue", "discovery"}
+    assert set(stats) == {"rss", "queue", "discovery", "conversions"}
     assert stats["rss"] == {"idx": 1}
     with session_factory(db)() as session:
         assert session.scalars(select(QueueItem)).first() is not None
@@ -64,9 +64,13 @@ def test_run_cycles_isolates_failing_job(client, db, monkeypatch):
         calls["discovery"] += 1
         return {}
 
+    def _conversions(session, out_dir="data/converted"):
+        return {"completed": 0, "failed": 0}
+
     monkeypatch.setattr(scheduler, "rss_sync", _boom)
     monkeypatch.setattr(scheduler, "process_queue", _queue)
     monkeypatch.setattr(scheduler, "evaluate_lists", _discovery)
+    monkeypatch.setattr(scheduler, "process_conversions", _conversions)
 
     stats = run_cycles(db)
 

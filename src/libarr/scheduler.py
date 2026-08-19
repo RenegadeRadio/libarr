@@ -17,6 +17,8 @@ import random
 from sqlalchemy.engine import Engine
 
 from libarr.acquisition.import_pipeline import default_import_hook
+from libarr.config import Settings
+from libarr.conversion import process_conversions
 from libarr.db import session_factory
 from libarr.discovery import evaluate_lists
 from libarr.tasks.download_watch import process_queue
@@ -48,6 +50,13 @@ def run_cycles(engine: Engine) -> dict[str, object]:
         except Exception:  # noqa: BLE001
             logger.exception("scheduler: evaluate_lists failed")
             stats["discovery"] = "error"
+        try:
+            stats["conversions"] = process_conversions(
+                session, out_dir=Settings().conversion_out_dir
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("scheduler: process_conversions failed")
+            stats["conversions"] = "error"
     return stats
 
 

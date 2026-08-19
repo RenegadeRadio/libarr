@@ -50,7 +50,7 @@ def search_works(
     language: str | None = None,
     limit: int = 50,
 ) -> list[DiscoveryWork]:
-    """Discovery query: Open Library `subject:` search, Google Books fallback."""
+    """Discovery query: Open Library first, Google Books fallback."""
     works: list[DiscoveryWork] = []
     if genre:
         try:
@@ -78,6 +78,22 @@ def search_works(
                     source_key=release.guid,
                 )
             )
+    elif q:
+        try:
+            releases = OpenLibraryIndexer(name="Open Library").search(q, require_download=False)
+        except IndexerError:
+            releases = []
+        works = [
+            DiscoveryWork(
+                title=release.title,
+                author=release.author,
+                year=release.year,
+                subjects=release.subjects,
+                source="openlibrary",
+                source_key=release.guid,
+            )
+            for release in releases
+        ]
     if not works and q:
         try:
             provider = GoogleBooksProvider(session)

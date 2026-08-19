@@ -256,6 +256,25 @@ class DumpIsbn(Base):
     title: Mapped[str] = mapped_column(String(512), nullable=False)
 
 
+class ConversionJob(Base):
+    """A queued `ebook-convert` subprocess job (Phase 3 conversion worker)."""
+
+    __tablename__ = "conversion_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id"), nullable=False)
+    target_format: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), default="queued", nullable=False
+    )  # queued|working|done|failed
+    output_path: Mapped[str | None] = mapped_column(String(1024))
+    error: Mapped[str | None] = mapped_column(String(1024))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_now, onupdate=_now, nullable=False
+    )
+
+
 class User(Base):
     """Application user (plan Task 1.11). Admin bootstraps on first run."""
 
@@ -265,6 +284,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     api_key: Mapped[str | None] = mapped_column(String(64), unique=True)
+    notify_events: Mapped[str] = mapped_column(
+        String(512), default='["import","search"]', nullable=False
+    )
     role: Mapped[str] = mapped_column(String(16), default="user", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
 
@@ -308,6 +330,7 @@ class MetadataCache(Base):
 __all__ = [
     "Author",
     "Book",
+    "ConversionJob",
     "DiscoveryList",
     "DownloadClientRow",
     "DumpIsbn",
