@@ -57,7 +57,7 @@ _GENRES = {
     "nonfiction": "nonfiction",
 }
 
-_SIMILAR_RE = re.compile(r"\bsimilar to\s+([a-z0-9&'.: \-]+?)(?:\s*[,.;!?]|$)", re.I)
+_SIMILAR_RE = re.compile(r"\bsimilar to\s+([a-z0-9&'.: /\-()]+?)(?:\s*[,.;!?]|$)", re.I)
 _AUTHOR_RE = re.compile(r"\bby\s+([a-z][a-z' .-]+)$", re.I)
 _DECADE_RE = re.compile(r"(?:from|in|the)?\s*(?:the\s+)?(19|20)(\d\d)s?\b", re.I)
 _YEARS_RE = re.compile(r"\b(19|20)\d\d\b")
@@ -87,8 +87,16 @@ def parse_intent(message: str) -> ChatIntent:
     match = _SIMILAR_RE.search(text)
     if match:
         intent.kind = "similar"
-        intent.target = match.group(1).strip()
-        intent.themes = show_themes(intent.target)
+        raw = re.sub(r"\((?:tv|tv series|series|show)\)", "", match.group(1)).strip()
+        intent.target = raw
+        # "rubicon/rabbithole" → the union of both shows' themes
+        parts = [p.strip() for p in raw.split("/") if p.strip()]
+        for part in parts:
+            for theme in show_themes(part):
+                if theme not in intent.themes:
+                    intent.themes.append(theme)
+        if not intent.themes:
+            intent.query = raw  # unknown show: search the name itself
 
     author = _AUTHOR_RE.search(text)
     if author:
@@ -172,8 +180,7 @@ def _build_reply(intent: ChatIntent, count: int) -> str:
         themes = ", ".join(intent.themes[:3]) if intent.themes else ""
         suffix = f" ({themes})" if themes else ""
         return (
-            f"I couldn't find books matching that{suffix}."
-            " Try adding a genre, author, or decade."
+            f"I couldn't find books matching that{suffix}. Try adding a genre, author, or decade."
         )
     if intent.kind == "similar":
         source = intent.target.title() if intent.target else "that"

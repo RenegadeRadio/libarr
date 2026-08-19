@@ -12,6 +12,18 @@ def test_parse_similar_to_show():
     intent = parse_intent("i am looking for books that are similar to rubicon")
     assert intent.kind == "similar"
     assert intent.target == "rubicon"
+    assert "espionage" in intent.themes
+
+
+def test_parse_similar_to_multiple_shows_with_parenthetical():
+    intent = parse_intent(
+        "i am looking for books that are similar to rubicon/rabbithole (tv series)"
+    )
+    assert intent.kind == "similar"
+    assert "rubicon/rabbithole" in intent.target
+    assert "conspiracy" in intent.themes
+    assert "espionage" in intent.themes
+    assert "thrillers" in intent.themes
 
 
 def test_parse_author_query():
