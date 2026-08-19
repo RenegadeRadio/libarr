@@ -14,7 +14,7 @@
 
 **Phase 1 (Libarr Lite): COMPLETE (2026-08-19).** All 13 tasks shipped: models+FTS5, parser, scan, matcher, providers (3-hop OL resolution) with stale-while-error cache, enrichment, REST API, genre/keyword search with facets, OPDS 1.2, reader/progress/covers, forced auth (cookie/API-key/Basic), Vue 3 frontend (login, grid, search UI), Apprise notifications. **91 tests passing** + headless-Chromium UI smoke test (`scripts/ui-smoke.mjs`). Live-verified end-to-end against real Open Library data.
 
-**Phase 2.5 (metadata resilience): COMPLETE (2026-08-19).** OL dump ingestion → local mirror; ISBN lookups resolve fully offline when Open Library is down (anti-Readarr drill, tested with a provider-down integration test). **211 tests passing.**
+**Phase 2.5 (metadata resilience): COMPLETE (2026-08-19).** OL dump ingestion → local mirror; ISBN lookups resolve fully offline when Open Library is down (anti-Readarr drill, tested with a provider-down integration test). **211 tests passing.** Plus: in-process scheduler (cadence ± jitter, per-cycle isolation) wired into the app lifespan — RSS/watch/discovery now run automatically (`LIBARR_SCHEDULER_*` config); live-verified autonomous grab (scheduler → Gutenberg → matched wanted book → queued, no human action).
 
 **Phase 2 (the *Arr core): COMPLETE (2026-08-19).** All workstreams shipped: Torznab/Newznab + Gutenberg + Open Library/IA indexers, RSS sync, 5 download clients + grab/watch state machine, decision engine (quality profiles + comparer + candidate filtering), hardlink-first import pipeline with naming templates, wanted/history/monitoring/upgrade loop, discovery lists + subject thesaurus. **200 tests passing**; live-verified end-to-end in a real browser (discover 50 fantasy works → import → wanted). Next: **Phase 2.5 metadata resilience (OL dumps)** → Phase 3 ecosystem (request UI, conversion, Kobo/Kindle sync).
 
@@ -172,7 +172,7 @@ libarr/
 │   │   └── covers.py            # cover extraction (EPUB) + proxy caching
 │   ├── notify.py                # Apprise wrapper
 │   ├── tasks.py                 # ARQ worker: rss_sync, search, import, upgrade, scan
-│   └── scheduler.py             # APScheduler → enqueue tasks
+│   └── scheduler.py             # cadence loop (interval ± jitter, isolation) — wired into lifespan; ARQ/Redis swappable later
 ├── web/                         # Vue 3 + Vite SPA (or HTMX MVP, see Q3)
 ├── docker/                      # Dockerfile, docker-compose.yml, entrypoint
 ├── tests/                       # see §8
