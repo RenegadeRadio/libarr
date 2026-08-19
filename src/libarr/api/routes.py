@@ -29,6 +29,7 @@ from libarr.api.schemas import (
     BookPatch,
     CalibreExportIn,
     CalibreImportIn,
+    ChatIn,
     ClientIn,
     ClientOut,
     ClientTestResult,
@@ -674,6 +675,17 @@ def calendar(
     from libarr.calendar import calendar_events
 
     return calendar_events(session, years_back=years_back)
+
+
+@router.post("/chat")
+def chat(
+    body: ChatIn,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    """Natural-language discovery: replies with book suggestions."""
+    from libarr.chat import handle_message
+
+    return handle_message(session, body.message)
 
 
 # --- Requests / conversion (Phase 3) -----------------------------------------

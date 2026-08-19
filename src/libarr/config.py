@@ -58,3 +58,9 @@ class Settings(BaseSettings):
     oidc_issuer: str = ""
     oidc_client_id: str = ""
     oidc_client_secret: str = ""
+
+    # Chat assistant (Phase 4.5): optional OpenAI-compatible model for intent
+    # extraction; without a key the heuristic parser + themes KB are used.
+    chat_api_key: str = ""
+    chat_base_url: str = "https://api.openai.com/v1"
+    chat_model: str = "gpt-4o-mini"

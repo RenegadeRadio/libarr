@@ -266,6 +266,10 @@ class CalibreExportIn(BaseModel):
     book_ids: list[int] = Field(min_length=1, max_length=1000)
 
 
+class ChatIn(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+
+
 class QueueOut(BaseModel):
     id: int
     book_id: int | None
