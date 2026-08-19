@@ -94,8 +94,8 @@ def upgrade() -> None:
     )
     op.create_index("ix_files_format", "files", ["format"])
     op.execute(
-        "CREATE VIRTUAL TABLE book_fts USING fts5("
-        "title, author, description, subjects, content='')"
+        # Regular FTS5 (not contentless): DELETE/UPDATE are required for reindexing.
+        "CREATE VIRTUAL TABLE book_fts USING fts5(title, author, description, subjects)"
     )
 
 
