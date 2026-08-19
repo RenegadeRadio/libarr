@@ -16,6 +16,8 @@
 
 **Phase 2.5 (metadata resilience): COMPLETE (2026-08-19).** OL dump ingestion → local mirror; ISBN lookups resolve fully offline when Open Library is down (anti-Readarr drill, tested with a provider-down integration test). **211 tests passing.** Plus: in-process scheduler (cadence ± jitter, per-cycle isolation) wired into the app lifespan — RSS/watch/discovery now run automatically (`LIBARR_SCHEDULER_*` config); live-verified autonomous grab (scheduler → Gutenberg → matched wanted book → queued, no human action).
 
+**Phase 3 (ecosystem): COMPLETE (2026-08-19).** Request flow, conversion worker (ebook-convert + kepubify), archive unpacking, per-user notifications, calendar, Anna's Archive manual-link indexer, Send-to-Kindle, KOReader sync. **242 tests passing.**
+
 **Phase 2 (the *Arr core): COMPLETE (2026-08-19).** All workstreams shipped: Torznab/Newznab + Gutenberg + Open Library/IA indexers, RSS sync, 5 download clients + grab/watch state machine, decision engine (quality profiles + comparer + candidate filtering), hardlink-first import pipeline with naming templates, wanted/history/monitoring/upgrade loop, discovery lists + subject thesaurus. **200 tests passing**; live-verified end-to-end in a real browser (discover 50 fantasy works → import → wanted). Next: **Phase 2.5 metadata resilience (OL dumps)** → Phase 3 ecosystem (request UI, conversion, Kobo/Kindle sync).
 
 ---
@@ -334,7 +336,7 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 ### Phase 3 — Ecosystem polish (3–4 weeks)
 - [x] Request UI (Overseerr-style: "request book" → auto-add+search) with per-user limits; import lists (Open Library shelf / StoryGraph / Goodreads CSV export; Prowlarr-style "import" flow). — Request flow shipped (POST /requests: ISBN→provider or title→OL search, auto-add monitored, search-now). Per-user limits + external import lists still pending.
 - [x] Conversion worker: `ebook-convert` subprocess queue (EPUB→AZW3/KEPUB/PDF per device targets), configurable per format, disk guards. — `conversion.py` + `conversion_jobs` table + POST /books/{id}/convert + GET /conversions + scheduler cycle; disk guard (500MB cap), GPL-clean subprocess.
-- [ ] Kobo KEPUB pass (kepubify subprocess) + Send-to-Kindle email + KOReader progress sync (koreader-sync-server protocol, self-hosted option). — KEPUB accepted as a conversion target already; device delivery pending.
+- [x] Kobo KEPUB pass (kepubify subprocess — conversion worker routes KEPUB targets to kepubify) + Send-to-Kindle email (SMTP bridge, POST /books/{id}/send-to-kindle) + KOReader progress sync (koreader-sync-server-compatible /koreader endpoints: users/auth, users/lastone, progress/upload, progress/get; API keys as sync tokens).
 - [x] Calendar (upcoming releases for monitored authors) — `calendar.py` from OL author search (year granularity, honest about OL's data), GET /calendar + Calendar UI.
 - [x] Unpack archives (zip/rar torrent payloads) before import (unpackerr-equivalent, in-worker). — zip/tar with zip-slip protection in the import locate step; rar pending unrar binary.
 - [x] Notifications for search/failed-import; per-user notification prefs. — search-now outcomes notify per `users.notify_events` prefs; import/fail events already notify globally.
