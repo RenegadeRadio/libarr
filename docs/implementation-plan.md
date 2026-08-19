@@ -294,9 +294,9 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 - [x] Ship **built-in legal sources**: Gutenberg + Open Library/IA as first-class indexers `metadata/providers/gutenberg.py` + `standardebooks.py` as first-class *indexers* (direct download links as "releases") — acquisition works out of the box, no piracy required, day one. **2026-08-19 note:** Standard Ebooks moved its OPDS feeds behind auth (401s for programmatic access) — replaced with an **Open Library + Internet Archive** adapter (search.json + `archive.org/download/{ia}/{ia}.epub`); Gutenberg's official endpoint serves a legacy JSON array (not gutendex), parsed accordingly.
 
 **2.2 Download clients**
-- [ ] Adapters: qBittorrent (Web API v2), Deluge (JSON-RPC), Transmission (RPC), SABnzbd, NZBGet — each: `add(release)`, `list(category)`, `remove(download_id)`, `status`. Category constant `libarr`. Tests: mocked HTTP fixtures per client.
-- [ ] Client CRUD + UI + connectivity test; Remote Path Mapping UI (`downloads/` → library-side path translation).
-- [ ] `tasks.download_watch` — poll clients every 30–60s for category items; state machine `downloading → complete → imported → (seed policy) removed`.
+- [x] Adapters: qBittorrent (Web API v2), Deluge (JSON-RPC), Transmission (RPC), SABnzbd, NZBGet — each: `add(release)`, `list(category)`, `remove(download_id)`, `status`. Category constant `libarr`. Tests: mocked HTTP fixtures per client.
+- [x] Client CRUD API + connectivity test; Remote Path Mapping fields (remote_path/local_path); UI pending with frontend pass (`downloads/` → library-side path translation).
+- [x] `tasks.download_watch` — poll clients; state machine queued→downloading→importing→imported/failed; state machine `downloading → complete → imported → (seed policy) removed`.
 
 **2.3 Decision engine**
 - [ ] `quality.py` — format taxonomy (EPUB > AZW3/MOBI > PDF > others; audiobook profile: M4B > MP3 > others) + quality profile model: allowed formats, cutoff, custom formats (e.g. `+Retail`, `+DRM-Free`, `-Unknown`, `-Sample`, narrator scoring for audiobooks), language prefs.
