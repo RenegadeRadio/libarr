@@ -138,9 +138,7 @@ class OpenLibraryProvider(BaseProvider):
                 return self._get_json(f"{_API}/authors/{author_key}.json")
 
             try:
-                payload = cached_fetch(
-                    self.session, self.name, "author", author_key, fetch
-                )
+                payload = cached_fetch(self.session, self.name, "author", author_key, fetch)
             except ProviderError:
                 continue
             author_name = payload.get("name")

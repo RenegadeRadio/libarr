@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Protocol
 
 
 class IndexerError(Exception):
@@ -62,6 +63,16 @@ def as_int(value: str | int | None) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+class IndexerClient(Protocol):
+    """The common surface every indexer adapter implements."""
+
+    name: str
+
+    def search(self, q: str) -> list[Release]: ...
+
+    def recent(self, limit: int = 100) -> list[Release]: ...
 
 
 def year_from_title(title: str) -> int | None:

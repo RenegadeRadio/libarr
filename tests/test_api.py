@@ -36,16 +36,21 @@ def _seed_library(session, tmp_path):
     session.flush()
     session.add(
         Subject(
-            book_id=neuromancer.id, name="Science Fiction",
-            slug="science-fiction", source="user",
+            book_id=neuromancer.id,
+            name="Science Fiction",
+            slug="science-fiction",
+            source="user",
         )
     )
 
     epub_path = make_epub(tmp_path / "Dune - Frank Herbert.epub", "Dune", "Frank Herbert")
     session.add(
         File(
-            edition_id=dune.editions[0].id, path=str(epub_path), format="EPUB",
-            size_bytes=epub_path.stat().st_size, sha256="x" * 64,
+            edition_id=dune.editions[0].id,
+            path=str(epub_path),
+            format="EPUB",
+            size_bytes=epub_path.stat().st_size,
+            sha256="x" * 64,
         )
     )
     session.commit()
@@ -102,9 +107,7 @@ def test_book_detail_includes_editions_subjects(client, tmp_path):
     client, db = client
     with session_factory(db)() as session:
         _seed_library(session, tmp_path)
-        dune_id = session.scalars(
-            select(Book).where(Book.title == "Dune")
-        ).one().id
+        dune_id = session.scalars(select(Book).where(Book.title == "Dune")).one().id
 
     resp = client.get(f"/api/v1/books/{dune_id}")
 

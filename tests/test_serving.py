@@ -20,13 +20,14 @@ def _seed(session, tmp_path, cover_bytes=None, cover_url=None):
     edition = Edition(book_id=book.id, isbn13="9780441172719", format="EPUB")
     session.add(edition)
     session.flush()
-    epub_path = make_epub(
-        tmp_path / "Dune.epub", "Dune", "Frank Herbert", cover_bytes=cover_bytes
-    )
+    epub_path = make_epub(tmp_path / "Dune.epub", "Dune", "Frank Herbert", cover_bytes=cover_bytes)
     session.add(
         File(
-            edition_id=edition.id, path=str(epub_path), format="EPUB",
-            size_bytes=epub_path.stat().st_size, sha256="z" * 64,
+            edition_id=edition.id,
+            path=str(epub_path),
+            format="EPUB",
+            size_bytes=epub_path.stat().st_size,
+            sha256="z" * 64,
         )
     )
     if cover_url:
@@ -72,9 +73,7 @@ def test_progress_upsert_overwrites(client, tmp_path):
         json={"profile": "default", "position": 0.9},
     )
 
-    body = client.get(
-        f"/api/v1/books/{book.id}/progress", params={"profile": "default"}
-    ).json()
+    body = client.get(f"/api/v1/books/{book.id}/progress", params={"profile": "default"}).json()
     assert body["position"] == 0.9
 
 
@@ -115,7 +114,8 @@ def test_cover_downloaded_from_provider(client, tmp_path, monkeypatch):
     client, db = client
     with session_factory(db)() as session:
         _seed(
-            session, tmp_path,
+            session,
+            tmp_path,
             cover_url="https://covers.openlibrary.org/b/id/12345-L.jpg",
         )
 

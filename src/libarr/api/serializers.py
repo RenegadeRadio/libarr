@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from libarr.models import Author, Book
+from libarr.models import Author, Book, Indexer
 
 
 def serialize_author(author: Author) -> dict[str, Any]:
@@ -73,3 +73,18 @@ def serialize_book_detail(book: Book) -> dict[str, Any]:
         }
     )
     return data
+
+
+def serialize_indexer(row: Indexer) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "kind": row.kind,
+        "url": row.url,
+        "api_key": row.api_key,
+        "categories": row.categories,
+        "priority": row.priority,
+        "enabled": row.enabled,
+        "rss_enabled": row.rss_enabled,
+        "created_at": row.created_at,
+    }

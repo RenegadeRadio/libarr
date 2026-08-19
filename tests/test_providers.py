@@ -70,12 +70,10 @@ GOOGLE_VOLUMES = {
                 "pageCount": 535,
                 "language": "en",
                 "imageLinks": {"thumbnail": "http://books.google.com/thumb.jpg"},
-                "industryIdentifiers": [
-                    {"type": "ISBN_13", "identifier": "9780441172719"}
-                ],
+                "industryIdentifiers": [{"type": "ISBN_13", "identifier": "9780441172719"}],
             }
         }
-    ]
+    ],
 }
 
 
@@ -188,16 +186,18 @@ def test_cache_hit_avoids_refetch(session):
 def test_cache_stale_while_error(session):
     from datetime import timedelta
 
-    cached_fetch(
-        session, "openlibrary", "isbn", "9780441172719", lambda: {"title": "Dune"}
-    )
+    cached_fetch(session, "openlibrary", "isbn", "9780441172719", lambda: {"title": "Dune"})
 
     def broken() -> dict:
         raise ProviderError("provider down")
 
     # TTL expired → fetcher runs and fails → stale payload is served anyway.
     assert cached_fetch(
-        session, "openlibrary", "isbn", "9780441172719", broken,
+        session,
+        "openlibrary",
+        "isbn",
+        "9780441172719",
+        broken,
         ttl=timedelta(seconds=-1),
     ) == {"title": "Dune"}
 

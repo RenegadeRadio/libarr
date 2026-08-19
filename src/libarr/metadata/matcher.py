@@ -20,8 +20,27 @@ from libarr.metadata.normalize import normalize_isbn, normalize_text
 from libarr.models import Author, Book, Edition
 
 STOPWORDS = {
-    "the", "a", "an", "and", "of", "or", "in", "on", "to", "for", "with",
-    "by", "at", "de", "la", "le", "el", "il", "der", "die", "das",
+    "the",
+    "a",
+    "an",
+    "and",
+    "of",
+    "or",
+    "in",
+    "on",
+    "to",
+    "for",
+    "with",
+    "by",
+    "at",
+    "de",
+    "la",
+    "le",
+    "el",
+    "il",
+    "der",
+    "die",
+    "das",
 }
 
 
@@ -36,9 +55,7 @@ def match_book(
     if isbn:
         isbn13 = normalize_isbn(isbn)
         if isbn13 is not None:
-            edition = session.scalars(
-                select(Edition).where(Edition.isbn13 == isbn13)
-            ).first()
+            edition = session.scalars(select(Edition).where(Edition.isbn13 == isbn13)).first()
             if edition is not None:
                 return edition.book
 
@@ -82,9 +99,7 @@ def _strip_edition_keywords(norm_title: str) -> str | None:
     return " ".join(kept) or None
 
 
-def _fts_match(
-    session: Session, tokens: list[str], norm_author: str | None
-) -> Book | None:
+def _fts_match(session: Session, tokens: list[str], norm_author: str | None) -> Book | None:
     query = " AND ".join(f'"{t}"' for t in tokens)
     rows = session.execute(
         text("SELECT rowid FROM book_fts WHERE book_fts MATCH :q LIMIT 10"),
@@ -103,9 +118,7 @@ def _fts_match(
         )
         if author_mismatch:
             continue
-        book_tokens = {
-            t for t in normalize_text(book.title).split() if t not in STOPWORDS
-        }
+        book_tokens = {t for t in normalize_text(book.title).split() if t not in STOPWORDS}
         overlap = len(set(tokens) & book_tokens)
         if overlap >= 2 and (best is None or overlap > best[0]):
             best = (overlap, book)

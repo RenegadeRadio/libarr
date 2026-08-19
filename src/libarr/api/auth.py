@@ -68,9 +68,7 @@ def create_session_token(user_id: int) -> str:
 
 def read_session_token(token: str) -> int | None:
     try:
-        data = _serializer().loads(
-            token, max_age=int(SESSION_TTL.total_seconds())
-        )
+        data = _serializer().loads(token, max_age=int(SESSION_TTL.total_seconds()))
     except (BadSignature, SignatureExpired):
         return None
     uid = data.get("uid")
@@ -98,9 +96,7 @@ def get_current_user(
             return user
 
     if basic is not None:
-        user = session.scalars(
-            select(User).where(User.username == basic.username)
-        ).first()
+        user = session.scalars(select(User).where(User.username == basic.username)).first()
         if user is not None and verify_password(basic.password, user.password_hash):
             return user
     return None
@@ -161,9 +157,7 @@ def login(
     response: Response,
     session: Annotated[Session, Depends(get_session)],
 ) -> dict[str, Any]:
-    user = session.scalars(
-        select(User).where(User.username == body.username)
-    ).first()
+    user = session.scalars(select(User).where(User.username == body.username)).first()
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_session_token(user.id)

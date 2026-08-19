@@ -14,8 +14,7 @@ def _add_book(session, title, author=None, isbn=None, subjects=()):
         session.add(Edition(book_id=book.id, isbn13=isbn))
     for subj in subjects:
         session.add(
-            Subject(book_id=book.id, name=subj, slug=subj.lower().replace(" ", "-"),
-                    source="user")
+            Subject(book_id=book.id, name=subj, slug=subj.lower().replace(" ", "-"), source="user")
         )
     session.flush()
     reindex_book(session, book.id)

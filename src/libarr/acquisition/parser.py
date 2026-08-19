@@ -11,17 +11,38 @@ import re
 from dataclasses import dataclass
 
 STRONG_EXTENSIONS = {
-    "epub", "mobi", "azw", "azw3", "azw4", "pdf",
-    "fb2", "cbz", "cbr", "m4b", "mp3", "aax",
+    "epub",
+    "mobi",
+    "azw",
+    "azw3",
+    "azw4",
+    "pdf",
+    "fb2",
+    "cbz",
+    "cbr",
+    "m4b",
+    "mp3",
+    "aax",
 }
 WEAK_EXTENSIONS = {"txt"}
 EBOOK_EXTENSIONS = STRONG_EXTENSIONS | WEAK_EXTENSIONS
 
 # "Unabridged", "Annotated", … distinguish an edition qualifier from a series name.
 EDITION_KEYWORDS = {
-    "unabridged", "abridged", "annotated", "illustrated", "revised", "expanded",
-    "special edition", "collectors edition", "collector's edition", "2nd edition",
-    "3rd edition", "deluxe", "omnibus", "uncut",
+    "unabridged",
+    "abridged",
+    "annotated",
+    "illustrated",
+    "revised",
+    "expanded",
+    "special edition",
+    "collectors edition",
+    "collector's edition",
+    "2nd edition",
+    "3rd edition",
+    "deluxe",
+    "omnibus",
+    "uncut",
 }
 
 _YEAR_RE = re.compile(r"[\(\[](\d{4})[\)\]]")

@@ -156,6 +156,30 @@ class Indexer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
 
 
+class QueueItem(Base):
+    """A grabbed release awaiting download/import (plan 2.1.3).
+
+    status: queued → downloading → importing → imported | failed
+    """
+
+    __tablename__ = "queue_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"), nullable=False)
+    release_guid: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    indexer_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    download_url: Mapped[str | None] = mapped_column(String(1024))
+    format: Mapped[str | None] = mapped_column(String(16))
+    size_bytes: Mapped[int | None] = mapped_column()
+    status: Mapped[str] = mapped_column(String(16), default="queued", nullable=False)
+    error: Mapped[str | None] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_now, onupdate=_now, nullable=False
+    )
+
+
 class User(Base):
     """Application user (plan Task 1.11). Admin bootstraps on first run."""
 
@@ -206,6 +230,16 @@ class MetadataCache(Base):
 
 
 __all__ = [
-    "Author", "Book", "Edition", "File", "Indexer", "MetadataCache",
-    "ReadingProgress", "Series", "Setting", "Subject", "User",
+    "Author",
+    "Book",
+    "Edition",
+    "File",
+    "Indexer",
+    "MetadataCache",
+    "QueueItem",
+    "ReadingProgress",
+    "Series",
+    "Setting",
+    "Subject",
+    "User",
 ]

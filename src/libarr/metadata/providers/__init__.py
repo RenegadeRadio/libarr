@@ -42,9 +42,7 @@ class BaseProvider:
 
     def __init__(self, session: Session, client: httpx.Client | None = None) -> None:
         self.session = session
-        self.client = client or httpx.Client(
-            headers={"User-Agent": USER_AGENT}, timeout=20.0
-        )
+        self.client = client or httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=20.0)
 
     def _get_json(self, url: str, **params: str) -> dict[str, Any]:
         try:

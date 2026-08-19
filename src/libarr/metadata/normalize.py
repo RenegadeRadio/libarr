@@ -19,8 +19,15 @@ def normalize_text(text: str) -> str:
 
 _LIGATURES = str.maketrans(
     {
-        "æ": "ae", "œ": "oe", "ß": "ss", "ø": "oe", "ð": "d",
-        "þ": "th", "đ": "d", "ł": "l", "ı": "i",
+        "æ": "ae",
+        "œ": "oe",
+        "ß": "ss",
+        "ø": "oe",
+        "ð": "d",
+        "þ": "th",
+        "đ": "d",
+        "ł": "l",
+        "ı": "i",
     }
 )
 

@@ -55,7 +55,7 @@ GOOGLE_VOLUMES = {
                 "industryIdentifiers": [{"type": "ISBN_13", "identifier": "9780441172719"}],
             }
         }
-    ]
+    ],
 }
 
 
@@ -180,9 +180,7 @@ def test_enrich_dedupes_same_slug_subjects(session):
 @respx.mock
 def test_enrich_library_batch(session):
     respx.get(url__startswith="https://openlibrary.org/api/books").mock(
-        return_value=Response(
-            200, json={**OL_DETAILS, **OL_DETAILS_SECOND_ISBN}
-        )
+        return_value=Response(200, json={**OL_DETAILS, **OL_DETAILS_SECOND_ISBN})
     )
     _mock_ol_work()
     b1 = _book_with_isbn(session)

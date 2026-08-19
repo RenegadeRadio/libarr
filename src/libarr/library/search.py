@@ -53,9 +53,7 @@ def search_books(
     where = " WHERE " + " AND ".join(clauses) if clauses else ""
     joins = "FROM book_fts f JOIN books b ON b.id = f.rowid"
 
-    total = session.execute(
-        text(f"SELECT COUNT(*) {joins}{where}"), params
-    ).scalar_one()
+    total = session.execute(text(f"SELECT COUNT(*) {joins}{where}"), params).scalar_one()
 
     facets = [
         {"slug": slug, "name": name, "count": count}
@@ -71,10 +69,7 @@ def search_books(
     ]
 
     rows = session.execute(
-        text(
-            f"SELECT b.id {joins}{where} "
-            f"ORDER BY b.title LIMIT :limit OFFSET :offset"
-        ),
+        text(f"SELECT b.id {joins}{where} ORDER BY b.title LIMIT :limit OFFSET :offset"),
         {**params, "limit": limit, "offset": offset},
     ).all()
     ids = [row[0] for row in rows]

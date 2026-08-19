@@ -29,9 +29,7 @@ def test_bootstrap_creates_admin_and_can_login(raw_client):
 def test_login_wrong_password_rejected(raw_client):
     raw_client.post("/api/v1/auth/bootstrap", json={"username": "admin", "password": "hunter2!"})
 
-    resp = raw_client.post(
-        "/api/v1/auth/login", json={"username": "admin", "password": "wrong"}
-    )
+    resp = raw_client.post("/api/v1/auth/login", json={"username": "admin", "password": "wrong"})
     assert resp.status_code == 401
 
 

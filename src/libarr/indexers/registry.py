@@ -2,27 +2,31 @@
 
 from __future__ import annotations
 
-from libarr.indexers.base import IndexerError
+from typing import cast
+
+from libarr.indexers.base import IndexerClient, IndexerError
 from libarr.indexers.gutenberg import GutenbergIndexer
 from libarr.indexers.standardebooks import StandardEbooksIndexer
 from libarr.indexers.torznab import TorznabIndexer
 from libarr.models import Indexer
 
 _CLIENTS = {
-    client.kind: client
-    for client in (TorznabIndexer, GutenbergIndexer, StandardEbooksIndexer)
+    client.kind: client for client in (TorznabIndexer, GutenbergIndexer, StandardEbooksIndexer)
 }
 
 SUPPORTED_KINDS = sorted(_CLIENTS)
 
 
-def build_indexer(row: Indexer) -> object:
+def build_indexer(row: Indexer) -> IndexerClient:
     client_cls = _CLIENTS.get(row.kind)
     if client_cls is None:
         raise IndexerError(f"unknown indexer kind: {row.kind}")
-    return client_cls(
-        name=row.name,
-        url=row.url,
-        api_key=row.api_key,
-        categories=row.categories,
+    return cast(
+        IndexerClient,
+        client_cls(
+            name=row.name,
+            url=row.url,
+            api_key=row.api_key,
+            categories=row.categories,
+        ),
     )

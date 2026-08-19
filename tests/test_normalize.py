@@ -1,6 +1,5 @@
 """Normalization utilities: text folding, slugs, ISBN validation/conversion."""
 
-
 from libarr.metadata.normalize import normalize_isbn, normalize_text, slugify
 
 

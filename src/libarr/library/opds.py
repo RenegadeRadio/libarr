@@ -89,10 +89,8 @@ def root_feed() -> bytes:
     _link(feed, "search", "/opds/search.xml", OPENSEARCH_TYPE)
 
     sections = [
-        ("Authors", "urn:libarr:opds:authors", "/opds/authors",
-         "Browse the library by author."),
-        ("New Books", "urn:libarr:opds:new", "/opds/new",
-         "Recently added books."),
+        ("Authors", "urn:libarr:opds:authors", "/opds/authors", "Browse the library by author."),
+        ("New Books", "urn:libarr:opds:new", "/opds/new", "Recently added books."),
     ]
     for title, entry_id, href, description in sections:
         entry = _entry(feed, title, entry_id)
@@ -106,7 +104,8 @@ def authors_feed(session: Session) -> bytes:
     for author in session.scalars(select(Author).order_by(Author.name)).all():
         entry = _entry(feed, author.name, f"urn:libarr:author:{author.id}")
         _text(
-            entry, f"{{{ATOM}}}content",
+            entry,
+            f"{{{ATOM}}}content",
             f"{len(author.books)} book(s) by {author.name}",
         )
         _link(entry, "subsection", f"/opds/authors/{author.id}", CATALOG_TYPE)
@@ -125,9 +124,7 @@ def author_books_feed(session: Session, author_id: int) -> bytes | None:
 
 def new_feed(session: Session, limit: int = 50) -> bytes:
     feed = _feed("New Books", "urn:libarr:opds:new")
-    books = session.scalars(
-        select(Book).order_by(Book.date_added.desc()).limit(limit)
-    ).all()
+    books = session.scalars(select(Book).order_by(Book.date_added.desc()).limit(limit)).all()
     for book in books:
         _book_entry(feed, book)
     return _render(feed)
@@ -152,9 +149,7 @@ def search_description() -> bytes:
 
 
 def _book_entry(feed: Element, book: Book) -> None:
-    entry = _entry(
-        feed, book.title, f"urn:libarr:book:{book.id}", _stamp(book.date_added)
-    )
+    entry = _entry(feed, book.title, f"urn:libarr:book:{book.id}", _stamp(book.date_added))
     if book.author is not None:
         author = SubElement(entry, f"{{{ATOM}}}author")
         _text(author, f"{{{ATOM}}}name", book.author.name)

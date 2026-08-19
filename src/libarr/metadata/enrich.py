@@ -73,9 +73,7 @@ def enrich_library(session: Session) -> int:
     return enriched
 
 
-def _apply(
-    session: Session, book: Book, meta: BookMetadata, source: str
-) -> None:
+def _apply(session: Session, book: Book, meta: BookMetadata, source: str) -> None:
     # Provider data fills gaps; never overwrite user/filename-derived values.
     book.work_key = book.work_key or meta.work_key
     book.description = book.description or meta.description

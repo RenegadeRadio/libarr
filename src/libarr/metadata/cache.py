@@ -51,8 +51,11 @@ def cached_fetch(
     else:
         session.add(
             MetadataCache(
-                provider=provider, kind=kind, key=key,
-                payload_json=serialized, fetched_at=now,
+                provider=provider,
+                kind=kind,
+                key=key,
+                payload_json=serialized,
+                fetched_at=now,
             )
         )
     session.commit()

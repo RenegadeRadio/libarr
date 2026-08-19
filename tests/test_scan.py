@@ -17,11 +17,15 @@ def test_scan_indexes_books(tmp_path, session):
     lib = tmp_path / "library"
     lib.mkdir()
     stand = make_epub(
-        lib / "The Stand - Stephen King (1990).epub", "The Stand", "Stephen King",
+        lib / "The Stand - Stephen King (1990).epub",
+        "The Stand",
+        "Stephen King",
         isbn="9780451169518",
     )
     make_epub(
-        lib / "Dune - Frank Herbert (1965).epub", "Dune", "Frank Herbert",
+        lib / "Dune - Frank Herbert (1965).epub",
+        "Dune",
+        "Frank Herbert",
         isbn="9780441172719",
     )
     (lib / "Neuromancer (1984) - William Gibson.pdf").write_bytes(b"%PDF-1.4 fake")
@@ -95,5 +99,8 @@ def test_junk_files_ignored(tmp_path, session):
 def test_scan_result_counts(tmp_path):
     result = ScanResult()
     assert (result.files_found, result.files_added, result.files_updated, result.errors) == (
-        0, 0, 0, 0,
+        0,
+        0,
+        0,
+        0,
     )

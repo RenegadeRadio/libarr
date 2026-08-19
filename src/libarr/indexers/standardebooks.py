@@ -75,8 +75,12 @@ class StandardEbooksIndexer:
             published = entry.get("updated_parsed") or entry.get("published_parsed")
             published_dt = (
                 datetime(
-                    published[0], published[1], published[2],
-                    published[3], published[4], published[5],
+                    published[0],
+                    published[1],
+                    published[2],
+                    published[3],
+                    published[4],
+                    published[5],
                     tzinfo=UTC,
                 )
                 if published

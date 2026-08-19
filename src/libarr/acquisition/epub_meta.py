@@ -48,9 +48,7 @@ def read_opf_metadata(path: Path) -> OpfMetadata | None:
         return el.text.strip() if el is not None and el.text and el.text.strip() else None
 
     identifiers = [
-        el.text.strip()
-        for el in opf.findall(".//dc:identifier", dc)
-        if el.text and el.text.strip()
+        el.text.strip() for el in opf.findall(".//dc:identifier", dc) if el.text and el.text.strip()
     ]
     authors = [a.text.strip() for a in opf.findall(".//dc:creator", dc) if a.text]
 

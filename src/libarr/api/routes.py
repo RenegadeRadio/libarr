@@ -23,6 +23,9 @@ from libarr.api.schemas import (
     BookDetail,
     BookOut,
     BookPatch,
+    IndexerIn,
+    IndexerOut,
+    IndexerTestResult,
     ProgressOut,
     ProgressPut,
     SearchResult,
@@ -32,8 +35,11 @@ from libarr.api.serializers import (
     serialize_author_detail,
     serialize_book,
     serialize_book_detail,
+    serialize_indexer,
 )
 from libarr.fts import reindex_book
+from libarr.indexers.base import IndexerError
+from libarr.indexers.registry import SUPPORTED_KINDS, build_indexer
 from libarr.library.covers import cover_media_type, resolve_cover
 from libarr.library.opds import (
     CATALOG_TYPE,
@@ -49,7 +55,8 @@ from libarr.library.opds import (
 from libarr.library.search import search_books
 from libarr.metadata.matcher import STOPWORDS
 from libarr.metadata.normalize import normalize_text
-from libarr.models import Author, Book, Edition, ReadingProgress
+from libarr.models import Author, Book, Edition, Indexer, ReadingProgress
+from libarr.tasks.rss import rss_sync
 
 router = APIRouter(dependencies=[Depends(require_user)])
 
@@ -131,7 +138,8 @@ def patch_book(
 @router.get("/books/{book_id}/file")
 def book_file(book_id: int, session: Annotated[Session, Depends(get_session)]) -> FileResponse:
     book = session.get(
-        Book, book_id,
+        Book,
+        book_id,
         options=[selectinload(Book.editions).selectinload(Edition.files)],
     )
     if book is None:
@@ -149,9 +157,7 @@ def book_file(book_id: int, session: Annotated[Session, Depends(get_session)]) -
 
 @router.get("/books/{book_id}/cover")
 @router.get("/covers/{book_id}")
-def book_cover(
-    book_id: int, session: Annotated[Session, Depends(get_session)]
-) -> FileResponse:
+def book_cover(book_id: int, session: Annotated[Session, Depends(get_session)]) -> FileResponse:
     book = session.get(Book, book_id)
     if book is None:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -208,6 +214,105 @@ def put_progress(
     }
 
 
+# --- Indexers (plan 2.1.2) --------------------------------------------------
+
+
+@router.get("/indexers", response_model=list[IndexerOut])
+def list_indexers(
+    session: Annotated[Session, Depends(get_session)],
+) -> list[dict[str, Any]]:
+    rows = session.scalars(select(Indexer).order_by(Indexer.priority, Indexer.name)).all()
+    return [serialize_indexer(row) for row in rows]
+
+
+@router.post("/indexers", response_model=IndexerOut)
+def create_indexer(
+    body: IndexerIn, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, Any]:
+    if body.kind not in SUPPORTED_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown indexer kind. Supported: {', '.join(SUPPORTED_KINDS)}",
+        )
+    exists = session.scalars(select(Indexer).where(Indexer.name == body.name)).first()
+    if exists is not None:
+        raise HTTPException(status_code=409, detail="Indexer name already exists")
+    row = Indexer(**body.model_dump())
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return serialize_indexer(row)
+
+
+@router.get("/indexers/{indexer_id}", response_model=IndexerOut)
+def get_indexer(
+    indexer_id: int, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, Any]:
+    row = session.get(Indexer, indexer_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Indexer not found")
+    return serialize_indexer(row)
+
+
+@router.put("/indexers/{indexer_id}", response_model=IndexerOut)
+def update_indexer(
+    indexer_id: int,
+    body: IndexerIn,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    row = session.get(Indexer, indexer_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Indexer not found")
+    if body.kind not in SUPPORTED_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown indexer kind. Supported: {', '.join(SUPPORTED_KINDS)}",
+        )
+    for field, value in body.model_dump().items():
+        setattr(row, field, value)
+    session.commit()
+    session.refresh(row)
+    return serialize_indexer(row)
+
+
+@router.delete("/indexers/{indexer_id}")
+def delete_indexer(
+    indexer_id: int, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, str]:
+    row = session.get(Indexer, indexer_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Indexer not found")
+    session.delete(row)
+    session.commit()
+    return {"status": "ok"}
+
+
+@router.post("/indexers/{indexer_id}/test", response_model=IndexerTestResult)
+def test_indexer(
+    indexer_id: int, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, Any]:
+    row = session.get(Indexer, indexer_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Indexer not found")
+    try:
+        client = build_indexer(row)
+        caps_fn = getattr(client, "caps", None)
+        caps = caps_fn() if callable(caps_fn) else {}
+        return {"ok": True, "caps": caps, "error": None}
+    except IndexerError as exc:
+        return {"ok": False, "caps": None, "error": str(exc)}
+
+
+@router.post("/system/rss-sync")
+def trigger_rss_sync(
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    """Manual RSS-sync trigger (the scheduler will call rss_sync on cadence)."""
+    stats = rss_sync(session)
+    queued = sum(v for v in stats.values() if isinstance(v, int))
+    return {"indexers": stats, "queued": queued}
+
+
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------
 # Served at the root (no /api/v1 prefix): e-readers expect /opds.
 
@@ -226,9 +331,7 @@ def opds_authors(session: Annotated[Session, Depends(get_session)]) -> Response:
 
 
 @opds_router.get("/opds/authors/{author_id}")
-def opds_author(
-    author_id: int, session: Annotated[Session, Depends(get_session)]
-) -> Response:
+def opds_author(author_id: int, session: Annotated[Session, Depends(get_session)]) -> Response:
     feed = author_books_feed(session, author_id)
     if feed is None:
         raise HTTPException(status_code=404, detail="Author not found")
@@ -246,9 +349,7 @@ def opds_search_description() -> Response:
 
 
 @opds_router.get("/opds/search")
-def opds_search(
-    q: str, session: Annotated[Session, Depends(get_session)]
-) -> Response:
+def opds_search(q: str, session: Annotated[Session, Depends(get_session)]) -> Response:
     return Response(content=search_feed(session, q), media_type=CATALOG_TYPE)
 
 

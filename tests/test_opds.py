@@ -31,8 +31,11 @@ def _seed(session, tmp_path):
     epub_path = make_epub(tmp_path / "Dune.epub", "Dune", "Frank Herbert")
     session.add(
         File(
-            edition_id=dune_edition.id, path=str(epub_path), format="EPUB",
-            size_bytes=epub_path.stat().st_size, sha256="y" * 64,
+            edition_id=dune_edition.id,
+            path=str(epub_path),
+            format="EPUB",
+            size_bytes=epub_path.stat().st_size,
+            sha256="y" * 64,
         )
     )
     session.add(
@@ -63,9 +66,7 @@ def test_opds_root_navigation(client, tmp_path):
     resp = client.get("/opds")
 
     assert resp.status_code == 200
-    assert resp.headers["content-type"].startswith(
-        "application/atom+xml;profile=opds-catalog"
-    )
+    assert resp.headers["content-type"].startswith("application/atom+xml;profile=opds-catalog")
     feed = ET.fromstring(resp.content)
     assert feed.findtext(f"{ATOM}title") == "Libarr"
 
@@ -104,9 +105,7 @@ def test_opds_author_books_feed(client, tmp_path):
     client, db = client
     with session_factory(db)() as session:
         _seed(session, tmp_path)
-        author_id = session.scalars(
-            select(Author).where(Author.name == "Frank Herbert")
-        ).one().id
+        author_id = session.scalars(select(Author).where(Author.name == "Frank Herbert")).one().id
 
     resp = client.get(f"/opds/authors/{author_id}")
     feed = ET.fromstring(resp.content)
@@ -123,7 +122,8 @@ def test_opds_author_books_feed(client, tmp_path):
     assert acquisition == "/api/v1/books/1/file"
 
     acquisition_link = next(
-        link for link in dune.findall(f"{ATOM}link")
+        link
+        for link in dune.findall(f"{ATOM}link")
         if link.get("rel") == "http://opds-spec.org/acquisition"
     )
     assert acquisition_link.get("type") == "application/epub+zip"

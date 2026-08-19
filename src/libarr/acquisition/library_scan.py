@@ -135,9 +135,7 @@ def _find_book(session: Session, author_id: int | None, title: str) -> Book | No
     return None
 
 
-def _upsert_edition(
-    session: Session, book: Book, isbn: str | None, fmt: str
-) -> Edition:
+def _upsert_edition(session: Session, book: Book, isbn: str | None, fmt: str) -> Edition:
     if isbn is not None:
         existing = session.scalars(select(Edition).where(Edition.isbn13 == isbn)).first()
         if existing is not None:

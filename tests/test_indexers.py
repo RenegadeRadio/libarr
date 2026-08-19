@@ -12,8 +12,9 @@ from libarr.indexers.torznab import TorznabIndexer
 from libarr.models import Indexer
 
 
-def _torznab_rss(title="Dune - Frank Herbert (1965) EPUB", size="12345678",
-                 seeders="42", peers="50", guid="t1") -> str:
+def _torznab_rss(
+    title="Dune - Frank Herbert (1965) EPUB", size="12345678", seeders="42", peers="50", guid="t1"
+) -> str:
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:torznab="http://torznab.com/schemas/2015/feed">
   <channel>

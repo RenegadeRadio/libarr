@@ -100,9 +100,7 @@ class TorznabIndexer:
                 categories.add(int(cid))
         return {
             "title": server.get("title") if server is not None else None,
-            "search_available": (
-                search_el is not None and search_el.get("available") == "yes"
-            ),
+            "search_available": (search_el is not None and search_el.get("available") == "yes"),
             "categories": sorted(categories),
         }
 

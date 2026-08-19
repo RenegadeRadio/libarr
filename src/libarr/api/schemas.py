@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -120,3 +121,25 @@ class UserOut(BaseModel):
     username: str
     role: str
     api_key: str | None
+
+
+class IndexerIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    kind: str = Field(min_length=1, max_length=32)
+    url: str | None = Field(default=None, max_length=512)
+    api_key: str | None = Field(default=None, max_length=255)
+    categories: str = Field(default="7000,7010,7030,7050", max_length=255)
+    priority: int = Field(default=100, ge=0, le=1000)
+    enabled: bool = True
+    rss_enabled: bool = True
+
+
+class IndexerOut(IndexerIn):
+    id: int
+    created_at: datetime
+
+
+class IndexerTestResult(BaseModel):
+    ok: bool
+    caps: dict[str, Any] | None
+    error: str | None

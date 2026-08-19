@@ -20,8 +20,6 @@ def test_alembic_upgrade_creates_settings_table(db):
 
 def test_setting_key_is_unique(db):
     with session_factory(db)() as session:
-        session.add_all(
-            [Setting(key="theme", value="dark"), Setting(key="theme", value="light")]
-        )
+        session.add_all([Setting(key="theme", value="dark"), Setting(key="theme", value="light")])
         with pytest.raises(IntegrityError):
             session.commit()
