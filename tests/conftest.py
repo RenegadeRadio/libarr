@@ -14,6 +14,12 @@ from libarr.main import app
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture(autouse=True)
+def _no_scheduler(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the in-process scheduler out of tests that boot the app."""
+    monkeypatch.setenv("LIBARR_SCHEDULER_ENABLED", "false")
+
+
 @pytest.fixture()
 def db(tmp_path):
     """Engine whose schema is created by applying alembic migrations to a tmp sqlite file."""

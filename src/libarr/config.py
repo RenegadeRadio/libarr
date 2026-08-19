@@ -37,3 +37,9 @@ class Settings(BaseSettings):
         "{Series} - {Book Title} ({Release Year}) - {Author}.{Extension}"
     )
     import_mode: str = "hardlink"  # hardlink | copy | move
+
+    # Background scheduler (plan scheduler.py): runs RSS sync, the download
+    # watch and discovery lists on cadence. Disable for single-shot use.
+    scheduler_enabled: bool = True
+    scheduler_interval_seconds: int = 300
+    scheduler_jitter_seconds: int = 60
