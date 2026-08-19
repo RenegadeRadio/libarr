@@ -16,7 +16,7 @@ from libarr.indexers.base import IndexerError, Release
 from libarr.indexers.torznab import USER_AGENT
 
 SEARCH_URL = "https://openlibrary.org/search.json"
-_FIELDS = "key,title,author_name,first_publish_year,ia"
+_FIELDS = "key,title,author_name,first_publish_year,ia,subject,language"
 
 
 class OpenLibraryIndexer:
@@ -48,6 +48,29 @@ class OpenLibraryIndexer:
     def search(self, q: str) -> list[Release]:
         return self._parse(self._get({"q": q, "limit": "50", "fields": _FIELDS}))
 
+    def search_subject(
+        self,
+        subject: str,
+        *,
+        year_min: int | None = None,
+        year_max: int | None = None,
+        language: str | None = None,
+        limit: int = 50,
+    ) -> list[Release]:
+        """Discovery-list query (plan 2.6.2): OL `subject:` search + filters."""
+        params: dict[str, str] = {
+            "q": f"subject:{subject}",
+            "limit": str(limit),
+            "fields": _FIELDS,
+        }
+        if year_min is not None:
+            params["first_publish_year"] = f"[{year_min} TO *]"
+        if year_max is not None:
+            params["first_publish_year"] = f"[* TO {year_max}]"
+        if language:
+            params["language"] = language
+        return self._parse(self._get(params))
+
     def recent(self, limit: int = 50) -> list[Release]:
         return self._parse(
             self._get(
@@ -74,6 +97,7 @@ class OpenLibraryIndexer:
                     year=doc.get("first_publish_year"),
                     format="EPUB",
                     page_url=f"https://openlibrary.org{key}" if key else None,
+                    subjects=[str(s) for s in (doc.get("subject") or [])],
                 )
             )
         return releases

@@ -61,6 +61,35 @@ class GoogleBooksProvider(BaseProvider):
             isbn13=edition_isbn13 or None,
         )
 
+    def search(self, q: str, limit: int = 40) -> list[BookMetadata]:
+        """Subject/keyword search over volumes (plan 2.6.2, Google fallback).
+
+        Returns lightweight works (title/authors/year/subjects) — used by
+        discovery lists when Open Library is unavailable.
+        """
+        params: dict[str, str] = {"q": q, "maxResults": str(limit)}
+        if self.api_key:
+            params = {**params, "key": self.api_key}
+        try:
+            payload = self._get_json(_API, **params)
+        except Exception:  # noqa: BLE001 — provider isolation
+            return []
+        works: list[BookMetadata] = []
+        for item in payload.get("items") or []:
+            info = item.get("volumeInfo") or {}
+            year_match = _YEAR_RE.match(str(info.get("publishedDate", "")))
+            works.append(
+                BookMetadata(
+                    title=info.get("title"),
+                    authors=info.get("authors") or [],
+                    subjects=info.get("categories") or [],
+                    year=int(year_match.group(1)) if year_match else None,
+                    language=info.get("language"),
+                    work_key=str(item.get("id") or ""),
+                )
+            )
+        return works
+
 
 def _industry_identifier(info: dict[str, Any], kind: str) -> str | None:
     for identifier in info.get("industryIdentifiers") or []:

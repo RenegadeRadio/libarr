@@ -180,3 +180,42 @@ class HistoryOut(BaseModel):
     title: str
     details: str | None
     created_at: datetime
+
+
+class DiscoveryWorkIn(BaseModel):
+    title: str = Field(min_length=1, max_length=512)
+    author: str | None = Field(default=None, max_length=255)
+    year: int | None = None
+    subjects: list[str] = Field(default_factory=list)
+    source: str = Field(default="discovery", max_length=32)
+    source_key: str = Field(default="", max_length=255)
+
+
+class DiscoveryWorkOut(DiscoveryWorkIn):
+    pass
+
+
+class DiscoveryImportBody(BaseModel):
+    works: list[DiscoveryWorkIn]
+    monitored: bool = True
+
+
+class DiscoveryListIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    query: dict[str, Any]  # q/genre/year_min/year_max/language
+    schedule_days: int = Field(default=7, ge=1, le=365)
+    max_per_run: int = Field(default=10, ge=1, le=100)
+    auto_monitor: bool = True
+    enabled: bool = True
+
+
+class DiscoveryListOut(BaseModel):
+    id: int
+    name: str
+    query: dict[str, Any]
+    schedule_days: int
+    max_per_run: int
+    auto_monitor: bool
+    enabled: bool
+    last_run_at: datetime | None
+    created_at: datetime

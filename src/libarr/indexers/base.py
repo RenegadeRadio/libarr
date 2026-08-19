@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol
 
@@ -30,6 +30,7 @@ class Release:
     peers: int | None = None
     published_at: datetime | None = None
     page_url: str | None = None  # human-readable page (Gutenberg/SE)
+    subjects: list[str] = field(default_factory=list)
 
 
 _FORMAT_PATTERNS: list[tuple[str, str]] = [

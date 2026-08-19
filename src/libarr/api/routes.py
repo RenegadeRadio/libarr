@@ -7,6 +7,7 @@ and HTTP Basic credentials all work. Health + auth endpoints live outside.
 
 from __future__ import annotations
 
+import json as _json
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -29,6 +30,10 @@ from libarr.api.schemas import (
     ClientIn,
     ClientOut,
     ClientTestResult,
+    DiscoveryImportBody,
+    DiscoveryListIn,
+    DiscoveryListOut,
+    DiscoveryWorkOut,
     HistoryOut,
     IndexerIn,
     IndexerOut,
@@ -48,6 +53,7 @@ from libarr.api.serializers import (
 )
 from libarr.clients.base import DownloadError
 from libarr.clients.registry import CLIENT_KINDS, build_client
+from libarr.discovery import evaluate_lists, import_works, search_works
 from libarr.fts import reindex_book
 from libarr.indexers.base import IndexerError
 from libarr.indexers.registry import SUPPORTED_KINDS, build_indexer
@@ -69,6 +75,7 @@ from libarr.metadata.normalize import normalize_text
 from libarr.models import (
     Author,
     Book,
+    DiscoveryList,
     DownloadClientRow,
     Edition,
     HistoryEvent,
@@ -491,6 +498,129 @@ def history(
         stmt = stmt.where(HistoryEvent.book_id == book_id)
     events = session.scalars(stmt.limit(limit)).all()
     return [serialize_history(event) for event in events]
+
+
+# --- Discovery (plan 2.6) ----------------------------------------------------
+
+
+def _serialize_discovery_list(row: DiscoveryList) -> dict[str, Any]:
+    try:
+        query = _json.loads(row.query)
+    except _json.JSONDecodeError:
+        query = {}
+    return {
+        "id": row.id,
+        "name": row.name,
+        "query": query,
+        "schedule_days": row.schedule_days,
+        "max_per_run": row.max_per_run,
+        "auto_monitor": row.auto_monitor,
+        "enabled": row.enabled,
+        "last_run_at": row.last_run_at,
+        "created_at": row.created_at,
+    }
+
+
+@router.get("/discovery", response_model=list[DiscoveryWorkOut])
+def discovery_search(
+    session: Annotated[Session, Depends(get_session)],
+    q: str | None = None,
+    genre: str | None = None,
+    year_min: int | None = None,
+    year_max: int | None = None,
+    language: str | None = None,
+    limit: int = Query(50, ge=1, le=100),
+) -> list[dict[str, Any]]:
+    """Live discovery preview: works matching the query from providers."""
+    if not any([q, genre]):
+        raise HTTPException(status_code=400, detail="q or genre required")
+    return [
+        {
+            "title": w.title,
+            "author": w.author,
+            "year": w.year,
+            "subjects": w.subjects,
+            "source": w.source,
+            "source_key": w.source_key,
+        }
+        for w in search_works(
+            session,
+            q=q,
+            genre=genre,
+            year_min=year_min,
+            year_max=year_max,
+            language=language,
+            limit=limit,
+        )
+    ]
+
+
+@router.post("/discovery/import")
+def discovery_import(
+    body: DiscoveryImportBody, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, Any]:
+    from libarr.discovery import DiscoveryWork
+
+    works = [
+        DiscoveryWork(
+            title=w.title,
+            author=w.author,
+            year=w.year,
+            subjects=w.subjects,
+            source=w.source,
+            source_key=w.source_key,
+        )
+        for w in body.works
+    ]
+    added = import_works(session, works, monitored=body.monitored)
+    return {"added": added}
+
+
+@router.get("/discovery-lists", response_model=list[DiscoveryListOut])
+def list_discovery_lists(
+    session: Annotated[Session, Depends(get_session)],
+) -> list[dict[str, Any]]:
+    rows = session.scalars(select(DiscoveryList).order_by(DiscoveryList.name)).all()
+    return [_serialize_discovery_list(row) for row in rows]
+
+
+@router.post("/discovery-lists", response_model=DiscoveryListOut)
+def create_discovery_list(
+    body: DiscoveryListIn, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, Any]:
+    row = DiscoveryList(
+        name=body.name,
+        query=_json.dumps(body.query),
+        schedule_days=body.schedule_days,
+        max_per_run=body.max_per_run,
+        auto_monitor=body.auto_monitor,
+        enabled=body.enabled,
+    )
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return _serialize_discovery_list(row)
+
+
+@router.delete("/discovery-lists/{list_id}")
+def delete_discovery_list(
+    list_id: int, session: Annotated[Session, Depends(get_session)]
+) -> dict[str, str]:
+    row = session.get(DiscoveryList, list_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Discovery list not found")
+    session.delete(row)
+    session.commit()
+    return {"status": "ok"}
+
+
+@router.post("/system/discovery-lists")
+def trigger_discovery_lists(
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, Any]:
+    """Evaluate every enabled discovery list (scheduler will own cadence)."""
+    stats = evaluate_lists(session)
+    return {"lists": stats}
 
 
 # --- OPDS 1.2 catalog (Task 1.8) -------------------------------------------
