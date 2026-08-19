@@ -299,13 +299,13 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 - [x] `tasks.download_watch` — poll clients; state machine queued→downloading→importing→imported/failed; state machine `downloading → complete → imported → (seed policy) removed`.
 
 **2.3 Decision engine**
-- [ ] `quality.py` — format taxonomy (EPUB > AZW3/MOBI > PDF > others; audiobook profile: M4B > MP3 > others) + quality profile model: allowed formats, cutoff, custom formats (e.g. `+Retail`, `+DRM-Free`, `-Unknown`, `-Sample`, narrator scoring for audiobooks), language prefs.
-- [ ] `decision.py` — comparer implementing: **Format score → Custom-format score → Protocol (delay profile) → Indexer priority → Seeds/Peers → Age → Size** (Sonarr order, book-flavored). Unit tests: pairwise rankings, cutoff semantics, upgrade eligibility.
-- [ ] Release candidates normalization: parse release title + description + size + seeders into `Candidate`; filter obvious junk (`[sample]`, `.txt` scans, password-protected) — tests with a `candidates_fixtures.json` corpus.
+- [x] `quality.py` — format taxonomy (EPUB > AZW3/MOBI > PDF > others; audiobook profile: M4B > MP3 > others) + quality profile model: allowed formats, cutoff, custom formats (e.g. `+Retail`, `+DRM-Free`, `-Unknown`, `-Sample`, narrator scoring for audiobooks), language prefs.
+- [x] `decision.py` — comparer implementing: **Format score → Custom-format score → Protocol (delay profile) → Indexer priority → Seeds/Peers → Age → Size** (Sonarr order, book-flavored). Unit tests: pairwise rankings, cutoff semantics, upgrade eligibility.
+- [x] Release candidates normalization: parse release title + size + seeders into `Candidate`; filter obvious junk (`candidates_fixtures.json` corpus) (`[sample]`, `.txt` scans, password-protected) — tests with a `candidates_fixtures.json` corpus.
 
 **2.4 Import pipeline**
-- [ ] `import_pipeline.py` — locate completed files (torrent dir / usenet download dir) → `parser.py` → `matcher.py` → verify via EPUB OPF (ISBN/title check when ambiguity > threshold) → **hardlink→rename** (fallback: copy; config: move) → write `files` row + history → refresh OPDS index → notify. Tests: end-to-end with a real temp filesystem, assert hardlink inode equality, naming template output, failure paths (no-match → quarantine dir + UI flag).
-- [ ] Naming templates UI (like *Arr): `{Author Name}/{Series} - {Book Title} ({Release Year})/{Series} - {Book Title} ({Release Year}) - {Author}.{Extension}` default; token rendering + tests.
+- [x] `import_pipeline.py` — locate completed files (remote-path-mapped) → OPF verify → hardlink/copy/move → naming template → File row → quarantine → notify → `parser.py` → `matcher.py` → verify via EPUB OPF (ISBN/title check when ambiguity > threshold) → **hardlink→rename** (fallback: copy; config: move) → write `files` row + history → refresh OPDS index → notify. Tests: end-to-end with a real temp filesystem, assert hardlink inode equality, naming template output, failure paths (no-match → quarantine dir + UI flag).
+- [x] Naming templates (token rendering `{Author Name}/{Series}/{Book Title}/{Release Year}/{Author}/{Extension}`; UI pending with frontend pass) `{Author Name}/{Series} - {Book Title} ({Release Year})/{Series} - {Book Title} ({Release Year}) - {Author}.{Extension}` default; token rendering + tests.
 
 **2.5 Wanted / monitoring / history**
 - [ ] Wanted API+UI: Missing + Cutoff Unmet lists, per-item "Search now", batch search (rate-limited, indexer politeness).
