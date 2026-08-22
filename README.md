@@ -40,6 +40,11 @@ Operational extras: `libarr metadata-import --dump ol_dump_works.txt` (offline
 metadata mirror), `LIBARR_SCHEDULER_ENABLED=false` to disable background cycles,
 `LIBARR_APPRISE_URLS` for notifications.
 
+The optional Book Assistant model uses any OpenAI-compatible endpoint via
+`LIBARR_CHAT_API_KEY`, `LIBARR_CHAT_BASE_URL`, and `LIBARR_CHAT_MODEL`. The local
+Compose deployment is configured for OpenRouter's `stealth/ox-alpha`; put the
+key in the ignored `docker/.env` as `OLLAMA_API_KEY=...`.
+
 Portable catalog migration (credentials, users, and download-client secrets are
 deliberately excluded):
 

@@ -17,6 +17,11 @@ services:
       # Direct private/loopback clients use the first admin account without a login wall.
       # Disable this if the app is placed behind a reverse proxy.
       - LIBARR_LAN_AUTH_BYPASS=true
+      # OpenRouter-backed intent extraction for the Book Assistant. The API key
+      # is supplied through docker/.env and is never committed.
+      - LIBARR_CHAT_API_KEY=${OLLAMA_API_KEY:-}
+      - LIBARR_CHAT_BASE_URL=https://openrouter.ai/api/v1
+      - LIBARR_CHAT_MODEL=stealth/ox-alpha
       # Uncomment to harden:
       # - LIBARR_SECRET_KEY=change-me
       # - LIBARR_APPRISE_URLS=tgram://bot:chatid
