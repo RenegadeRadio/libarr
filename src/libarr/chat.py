@@ -302,6 +302,8 @@ def _llm_extract(message: str, settings: Settings) -> dict[str, Any] | None:
             json={
                 "model": settings.chat_model,
                 "temperature": 0,
+                "max_completion_tokens": 300,
+                "reasoning_effort": "low",
                 "response_format": {"type": "json_object"},
                 "messages": [
                     {"role": "system", "content": system},
@@ -345,7 +347,10 @@ def handle_message(session: Session, message: str) -> dict[str, Any]:
     """The chat endpoint: intent → themes → discovery search → suggestions."""
     settings = Settings()
     intent = parse_intent(message)
-    llm = _llm_extract(message, settings)
+    # Curated shows already have precise themes. Asking a general model again
+    # adds latency and can reinterpret a show name as a book title ("Rubicon"
+    # is both). Use the model for unknown/free-form intents where it adds value.
+    llm = None if intent.themes else _llm_extract(message, settings)
     if llm:
         themes = [str(t) for t in (llm.get("themes") or []) if t]
         if themes:

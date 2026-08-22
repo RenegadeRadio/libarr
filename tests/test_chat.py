@@ -145,6 +145,42 @@ def test_handle_similar_show_returns_books(client, db, monkeypatch):
 
 
 @respx.mock
+def test_handle_curated_multi_show_skips_llm(client, db, monkeypatch):
+    client, db = client
+    monkeypatch.setenv("LIBARR_CHAT_API_KEY", "sk-test")
+    monkeypatch.setenv("LIBARR_CHAT_BASE_URL", "https://llm.example/v1")
+    llm_route = respx.post("https://llm.example/v1/chat/completions").mock(
+        return_value=Response(500)
+    )
+    respx.get(url__startswith="https://openlibrary.org/search.json").mock(
+        return_value=Response(
+            200,
+            json={
+                "numFound": 1,
+                "docs": [
+                    {
+                        "key": "/works/OL1W",
+                        "title": "Tinker Tailor Soldier Spy",
+                        "author_name": ["John le Carré"],
+                        "first_publish_year": 1974,
+                        "subject": ["Espionage"],
+                    }
+                ],
+            },
+        )
+    )
+
+    response = client.post(
+        "/api/v1/chat",
+        json={"message": "looking for books similar to Rubicon and RabbitHole"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["suggestions"]
+    assert not llm_route.called
+
+
+@respx.mock
 def test_handle_genre_decade_request(client, db, monkeypatch):
     client, db = client
     monkeypatch.delenv("LIBARR_CHAT_API_KEY", raising=False)
@@ -275,7 +311,9 @@ def test_handle_with_llm_uses_model_json(client, db, monkeypatch):
         return_value=Response(200, json=ol_json)
     )
 
-    resp = client.post("/api/v1/chat", json={"message": "books similar to the tv show rubicon"})
+    resp = client.post(
+        "/api/v1/chat", json={"message": "books similar to the tv show obscure signal"}
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert any(s["title"] == "Tinker Tailor Soldier Spy" for s in body["suggestions"])
