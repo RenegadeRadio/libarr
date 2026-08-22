@@ -244,7 +244,7 @@ def test_handle_similar_uses_subject_search_with_fallback(client, db, monkeypatc
     def _handler(request):
         q = request.url.params.get("q")
         calls.append(q)
-        if q == "subject:conspiracy":
+        if q == "subject:espionage":
             return Response(200, json={"numFound": 0, "docs": []})
         return Response(
             200,
@@ -267,8 +267,8 @@ def test_handle_similar_uses_subject_search_with_fallback(client, db, monkeypatc
     resp = client.post("/api/v1/chat", json={"message": "similar to rubicon"})
     assert resp.status_code == 200
     body = resp.json()
-    assert calls[0] == "subject:conspiracy"
-    assert calls[1] == "subject:espionage"
+    assert calls[0] == "subject:espionage"
+    assert calls[1] == "subject:conspiracy"
     assert body["suggestions"]
 
 

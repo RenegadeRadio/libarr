@@ -4,7 +4,7 @@ Self-hosted, *Arr-style eBook automation platform: monitor authors and genres,
 search indexers, download, import, organize, and serve your library via OPDS
 and a built-in reader.
 
-> **Status: Phases 1–4 implemented (2026-08-22) — 295 tests passing.**
+> **Status: Phases 1–4 implemented (2026-08-22) — 298 tests passing.**
 > The full *Arr loop is live: monitor → [scheduler] → RSS/search → decision →
 > grab (5 download clients) → hardlink import → named library → OPDS, plus
 > genre/keyword discovery, wanted/upgrade tracking, offline metadata via OL
@@ -18,7 +18,7 @@ and a built-in reader.
 - `src/libarr/` — FastAPI application (modular monolith: metadata, indexers,
   download clients, acquisition, library serving, scheduler)
 - `web/` — Vue 3 SPA
-- `tests/` — pytest suite (295 tests)
+- `tests/` — pytest suite (298 tests)
 - `docker/` — Dockerfile + compose (single `/data` volume, hardlink-safe)
 
 ## Development

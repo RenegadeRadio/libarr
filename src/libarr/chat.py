@@ -27,7 +27,7 @@ from libarr.discovery import search_works
 # landmark films). Themes are chosen to map onto Open Library subject search.
 SHOW_THEMES: dict[str, list[str]] = {
     # --- conspiracy / espionage / intelligence ------------------------------
-    "rubicon": ["conspiracy", "espionage", "intelligence services", "paranoia"],
+    "rubicon": ["espionage", "conspiracy", "intelligence services", "paranoia"],
     "rabbithole": ["conspiracy", "corporate espionage", "paranoia", "thrillers"],
     "the americans": ["espionage", "cold war", "spies"],
     "homeland": ["espionage", "counterterrorism", "paranoia"],
