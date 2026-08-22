@@ -27,6 +27,21 @@ def test_parse_similar_to_multiple_shows_with_parenthetical():
     assert "thrillers" in intent.themes
 
 
+def test_parse_similar_to_multiple_shows_joined_by_and():
+    intent = parse_intent("looking for books similar to Rubicon and RabbitHole")
+    assert intent.kind == "similar"
+    assert intent.target == "rubicon and rabbithole"
+    assert "conspiracy" in intent.themes
+    assert "espionage" in intent.themes
+    assert "corporate espionage" in intent.themes
+
+
+def test_parse_preserves_known_show_with_connector():
+    intent = parse_intent("books similar to Law & Order")
+    assert intent.kind == "similar"
+    assert "legal drama" in intent.themes
+
+
 def test_parse_author_query():
     intent = parse_intent("find me books by ursula k le guin")
     assert intent.kind == "author"
@@ -51,6 +66,7 @@ def test_show_themes_knowledge_base():
 
     assert "espionage" in show_themes("rubicon")
     assert "conspiracy" in show_themes("rabbithole")
+    assert "conspiracy" in show_themes("Rabbit Hole")
 
 
 def test_knowledge_base_is_complete_and_lowercase():

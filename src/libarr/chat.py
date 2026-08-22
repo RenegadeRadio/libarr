@@ -227,8 +227,14 @@ def parse_intent(message: str) -> ChatIntent:
         intent.kind = "similar"
         raw = re.sub(r"\((?:tv|tv series|series|show)\)", "", match.group(1)).strip()
         intent.target = raw
-        # "rubicon/rabbithole" → the union of both shows' themes
-        parts = [p.strip() for p in raw.split("/") if p.strip()]
+        # Preserve titles containing connectors (for example "Law & Order")
+        # when the whole phrase is known. Otherwise, "Rubicon and RabbitHole"
+        # and "rubicon/rabbithole" both become a union of the shows' themes.
+        parts = [raw]
+        if not show_themes(raw):
+            parts = [
+                part.strip() for part in re.split(r"\s*(?:/|,|\band\b|&)\s*", raw) if part.strip()
+            ]
         for part in parts:
             for theme in show_themes(part):
                 if theme not in intent.themes:
@@ -270,7 +276,8 @@ def parse_intent(message: str) -> ChatIntent:
 
 def show_themes(name: str) -> list[str]:
     """Knowledge-base lookup for a TV show / film name (case-insensitive)."""
-    return SHOW_THEMES.get(_normalize(name), [])
+    normalized = _normalize(name)
+    return SHOW_THEMES.get(normalized, SHOW_THEMES.get(normalized.replace(" ", ""), []))
 
 
 def _llm_extract(message: str, settings: Settings) -> dict[str, Any] | None:
