@@ -6,7 +6,7 @@ continue the project. Authoritative plan: `docs/implementation-plan.md`
 
 ## Project state (2026-08-22)
 
-**Phases 1–4 implemented, with 298 tests passing. The catalog can be migrated
+**Phases 1–4 implemented, with 302 tests passing. The catalog can be migrated
 between instances with `libarr export` / `libarr import`; credentials and users
 are deliberately excluded from that portable archive.**
 
@@ -50,7 +50,7 @@ queued item ("Pride and Prejudice", queued autonomously by the scheduler).
 ## Verify
 
 ```bash
-uv run pytest -q          # 298 tests
+uv run pytest -q          # 302 tests
 uv run ruff check src tests migrations && uv run ruff format --check src tests migrations
 uv run mypy src
 ```

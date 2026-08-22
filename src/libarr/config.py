@@ -68,3 +68,4 @@ class Settings(BaseSettings):
     chat_api_key: str = ""
     chat_base_url: str = "https://api.openai.com/v1"
     chat_model: str = "gpt-4o-mini"
+    goodreads_ratings_enabled: bool = False

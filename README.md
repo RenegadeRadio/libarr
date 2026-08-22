@@ -4,7 +4,7 @@ Self-hosted, *Arr-style eBook automation platform: monitor authors and genres,
 search indexers, download, import, organize, and serve your library via OPDS
 and a built-in reader.
 
-> **Status: Phases 1–4 implemented (2026-08-22) — 298 tests passing.**
+> **Status: Phases 1–4 implemented (2026-08-22) — 302 tests passing.**
 > The full *Arr loop is live: monitor → [scheduler] → RSS/search → decision →
 > grab (5 download clients) → hardlink import → named library → OPDS, plus
 > genre/keyword discovery, wanted/upgrade tracking, offline metadata via OL
@@ -18,7 +18,7 @@ and a built-in reader.
 - `src/libarr/` — FastAPI application (modular monolith: metadata, indexers,
   download clients, acquisition, library serving, scheduler)
 - `web/` — Vue 3 SPA
-- `tests/` — pytest suite (298 tests)
+- `tests/` — pytest suite (302 tests)
 - `docker/` — Dockerfile + compose (single `/data` volume, hardlink-safe)
 
 ## Development
@@ -43,7 +43,11 @@ metadata mirror), `LIBARR_SCHEDULER_ENABLED=false` to disable background cycles,
 The optional Book Assistant model uses any OpenAI-compatible endpoint via
 `LIBARR_CHAT_API_KEY`, `LIBARR_CHAT_BASE_URL`, and `LIBARR_CHAT_MODEL`. The local
 Compose deployment is configured for OpenRouter's `stealth/ox-alpha`; put the
-key in the ignored `docker/.env` as `OLLAMA_API_KEY=...`.
+key in the ignored `docker/.env` as `OLLAMA_API_KEY=...`. It also enables
+best-effort Goodreads rating enrichment. Assistant recommendations return up
+to 12 books, rank rated candidates with vote-count confidence, and reserve
+space for recent, modern, and classic works. Goodreads failures degrade to
+unrated results rather than failing the request.
 
 Portable catalog migration (credentials, users, and download-client secrets are
 deliberately excluded):

@@ -268,7 +268,8 @@ def test_handle_similar_uses_subject_search_with_fallback(client, db, monkeypatc
     assert resp.status_code == 200
     body = resp.json()
     assert calls[0] == "subject:espionage"
-    assert calls[1] == "subject:conspiracy"
+    assert calls[1] == "subject:espionage AND first_publish_year:[2016 TO *]"
+    assert calls[2] == "subject:conspiracy"
     assert body["suggestions"]
 
 

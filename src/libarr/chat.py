@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -343,6 +344,63 @@ def _build_reply(intent: ChatIntent, count: int) -> str:
     return "Here's what I found:"
 
 
+def _dedupe_works(works: list[Any]) -> list[Any]:
+    seen: set[tuple[str, str]] = set()
+    unique = []
+    for work in works:
+        key = (_normalize(work.title), _normalize(work.author or ""))
+        if key not in seen:
+            seen.add(key)
+            unique.append(work)
+    return unique
+
+
+def _balanced_pool(regular: list[Any], recent: list[Any], limit: int) -> list[Any]:
+    """Interleave recent and broad results before the ratings pass."""
+    mixed: list[Any] = []
+    width = max(len(regular), len(recent))
+    for index in range(width):
+        if index < len(recent):
+            mixed.append(recent[index])
+        if index < len(regular):
+            mixed.append(regular[index])
+    return _dedupe_works(mixed)[:limit]
+
+
+def _rank_works(works: list[Any], *, limit: int, use_goodreads: bool) -> list[tuple[Any, Any]]:
+    ratings: dict[tuple[str, str | None], Any] = {}
+    if use_goodreads and works:
+        from libarr.goodreads import lookup_ratings
+
+        ratings = lookup_ratings([(work.title, work.author) for work in works])
+
+    def score(work: Any) -> tuple[float, int]:
+        rating = ratings.get((work.title, work.author))
+        return (rating.rank_score if rating else 0.0, work.year or 0)
+
+    current_year = datetime.now(UTC).year
+    buckets = {
+        "recent": [work for work in works if work.year and work.year >= current_year - 10],
+        "modern": [work for work in works if work.year and 1990 <= work.year < current_year - 10],
+        "classic": [work for work in works if work.year and work.year < 1990],
+        "unknown": [work for work in works if not work.year],
+    }
+    for bucket in buckets.values():
+        bucket.sort(key=score, reverse=True)
+
+    # Guarantee room for different eras, then fill remaining slots by rating.
+    quotas = {"recent": 4, "modern": 4, "classic": 2, "unknown": 1}
+    selected: list[Any] = []
+    for index in range(max(quotas.values())):
+        for name in ("recent", "modern", "classic", "unknown"):
+            if index < quotas[name] and buckets[name]:
+                selected.append(buckets[name].pop(0))
+    remaining = [work for bucket in buckets.values() for work in bucket]
+    remaining.sort(key=score, reverse=True)
+    selected.extend(remaining)
+    return [(work, ratings.get((work.title, work.author))) for work in selected[:limit]]
+
+
 def handle_message(session: Session, message: str) -> dict[str, Any]:
     """The chat endpoint: intent → themes → discovery search → suggestions."""
     settings = Settings()
@@ -365,23 +423,28 @@ def handle_message(session: Session, message: str) -> dict[str, Any]:
         intent.year_min = llm.get("year_min") or intent.year_min
         intent.year_max = llm.get("year_max") or intent.year_max
 
-    limit = 5
+    limit = 12
+    candidate_limit = 18
     works = []
     if intent.kind == "author" and intent.query:
         works = search_works(session, q=f"author:{intent.query}", limit=limit)
     elif intent.themes:
         # Subject search is far more reliable than keyword phrases for theme
         # discovery (OL keyword search degrades on multi-term phrases).
-        works = []
-        seen: set[tuple[str, str]] = set()
+        regular = []
+        recent = []
+        current_year = datetime.now(UTC).year
         for theme in intent.themes[:2]:
-            for work in search_works(session, genre=theme, limit=limit):
-                key = (work.title, work.author or "")
-                if key not in seen:
-                    seen.add(key)
-                    works.append(work)
-            if len(works) >= limit:
-                break
+            regular.extend(search_works(session, genre=theme, limit=10))
+            recent.extend(
+                search_works(
+                    session,
+                    genre=theme,
+                    year_min=current_year - 10,
+                    limit=6,
+                )
+            )
+        works = _balanced_pool(regular, recent, candidate_limit)
         if not works:  # subject search came up empty → keyword fallback
             query = " ".join(intent.themes[:3])
             works = search_works(session, q=query, limit=limit)
@@ -399,14 +462,22 @@ def handle_message(session: Session, message: str) -> dict[str, Any]:
     elif intent.query:
         works = search_works(session, q=intent.query, limit=limit)
 
+    ranked = _rank_works(
+        works,
+        limit=limit,
+        use_goodreads=settings.goodreads_ratings_enabled,
+    )
     suggestions = [
         {
             "title": work.title,
             "author": work.author,
             "year": work.year,
             "source": work.source,
+            "rating": rating.average if rating else None,
+            "rating_count": rating.count if rating else None,
+            "rating_url": rating.url if rating else None,
         }
-        for work in works[:limit]
+        for work, rating in ranked
     ]
     return {
         "reply": _build_reply(intent, len(suggestions)),

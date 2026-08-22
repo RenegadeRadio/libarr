@@ -220,6 +220,19 @@ def test_openlibrary_search_parses_releases():
     assert r.format == "EPUB"
 
 
+@respx.mock
+def test_openlibrary_subject_year_range_is_part_of_query():
+    route = respx.get(url__startswith="https://openlibrary.org/search.json").mock(
+        return_value=Response(200, json={"numFound": 0, "docs": []})
+    )
+
+    OpenLibraryIndexer().search_subject("espionage", year_min=2016, year_max=2026)
+
+    request = route.calls[0].request
+    assert request.url.params["q"] == ("subject:espionage AND first_publish_year:[2016 TO 2026]")
+    assert "first_publish_year" not in request.url.params
+
+
 def test_registry_builds_clients():
     row = Indexer(
         name="Books", kind="torznab", url="http://idx.example", api_key="k", categories="7000"

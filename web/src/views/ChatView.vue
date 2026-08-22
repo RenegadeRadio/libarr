@@ -55,6 +55,13 @@ async function requestBook(s) {
             <div class="sug-title">
               <strong>{{ s.title }}</strong>
               <span class="muted"> — {{ s.author }}{{ s.year ? ` (${s.year})` : '' }}</span>
+              <a
+                v-if="s.rating"
+                class="rating"
+                :href="s.rating_url"
+                target="_blank"
+                rel="noopener noreferrer"
+              >★ {{ s.rating.toFixed(2) }} · {{ s.rating_count.toLocaleString() }} Goodreads</a>
             </div>
             <button class="btn small" @click="requestBook(s)" :disabled="s.requested">
               {{ s.requested || 'Request' }}

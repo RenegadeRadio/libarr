@@ -61,15 +61,16 @@ class OpenLibraryIndexer:
         limit: int = 50,
     ) -> list[Release]:
         """Discovery-list query (plan 2.6.2): OL `subject:` search + filters."""
+        query = f"subject:{subject}"
+        if year_min is not None or year_max is not None:
+            lower = str(year_min) if year_min is not None else "*"
+            upper = str(year_max) if year_max is not None else "*"
+            query += f" AND first_publish_year:[{lower} TO {upper}]"
         params: dict[str, str] = {
-            "q": f"subject:{subject}",
+            "q": query,
             "limit": str(limit),
             "fields": _FIELDS,
         }
-        if year_min is not None:
-            params["first_publish_year"] = f"[{year_min} TO *]"
-        if year_max is not None:
-            params["first_publish_year"] = f"[* TO {year_max}]"
         if language:
             params["language"] = language
         return self._parse(self._get(params), require_ia=False)

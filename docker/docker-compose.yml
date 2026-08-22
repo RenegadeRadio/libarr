@@ -22,6 +22,7 @@ services:
       - LIBARR_CHAT_API_KEY=${OLLAMA_API_KEY:-}
       - LIBARR_CHAT_BASE_URL=https://openrouter.ai/api/v1
       - LIBARR_CHAT_MODEL=stealth/ox-alpha
+      - LIBARR_GOODREADS_RATINGS_ENABLED=true
       # Uncomment to harden:
       # - LIBARR_SECRET_KEY=change-me
       # - LIBARR_APPRISE_URLS=tgram://bot:chatid
