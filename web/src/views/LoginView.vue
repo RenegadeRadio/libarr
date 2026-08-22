@@ -9,6 +9,13 @@ const error = ref('')
 
 onMounted(async () => {
   try {
+    await api('/auth/me')
+    window.location.replace('/')
+    return
+  } catch {
+    // No current identity: continue with bootstrap/login discovery.
+  }
+  try {
     needed.value = (await api('/auth/bootstrap')).needed
   } catch {
     needed.value = true
