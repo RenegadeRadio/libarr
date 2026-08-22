@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     # Security
     auth_enabled: bool = True
+    # Trust direct RFC1918/loopback/IPv6-ULA clients as the first admin user.
+    # Keep off when Libarr sits behind a reverse proxy: the proxy peer itself
+    # may have a private address even when the original visitor does not.
+    lan_auth_bypass: bool = False
     # Session signing secret. Unset → ephemeral random per start (cookies
     # invalidate on restart). Set LIBARR_SECRET_KEY for persistence.
     secret_key: str | None = None

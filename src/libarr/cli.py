@@ -1,4 +1,4 @@
-"""Libarr CLI (plan 2.5): `libarr metadata-import --dump <file> [--kind ...]`."""
+"""Libarr command-line interface."""
 
 from __future__ import annotations
 
@@ -62,6 +62,18 @@ def main(argv: list[str] | None = None) -> int:
         help="record kind (default: inferred from the filename)",
     )
 
+    exporter = subparsers.add_parser(
+        "export", help="Export the portable metadata catalog to JSON or ZIP"
+    )
+    exporter.add_argument("--output", "-o", type=Path, required=True)
+    exporter.add_argument("--force", action="store_true", help="overwrite an existing output file")
+
+    restore = subparsers.add_parser("import", help="Import a Libarr metadata JSON or ZIP archive")
+    restore.add_argument("--input", "-i", type=Path, required=True)
+    restore.add_argument(
+        "--replace", action="store_true", help="replace an existing metadata catalog"
+    )
+
     worker = subparsers.add_parser(
         "worker",
         help=(
@@ -80,6 +92,24 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     args = parser.parse_args(argv)
+
+    if args.command in {"export", "import"}:
+        from libarr.metadata.backup import import_archive, write_export
+
+        settings = Settings()
+        _ensure_migrated(settings.database_url)
+        engine = make_engine(settings.database_url)
+        try:
+            with session_factory(engine)() as session:
+                if args.command == "export":
+                    counts = write_export(session, args.output, force=args.force)
+                    print(f"exported {sum(counts.values())} record(s) to {args.output}")
+                else:
+                    counts = import_archive(session, args.input, replace=args.replace)
+                    print(f"imported {sum(counts.values())} record(s) from {args.input}")
+            return 0
+        finally:
+            engine.dispose()
 
     if args.command == "worker":
         settings = Settings()

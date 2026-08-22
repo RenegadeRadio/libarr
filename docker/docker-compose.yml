@@ -14,6 +14,9 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
+      # Direct private/loopback clients use the first admin account without a login wall.
+      # Disable this if the app is placed behind a reverse proxy.
+      - LIBARR_LAN_AUTH_BYPASS=true
       # Uncomment to harden:
       # - LIBARR_SECRET_KEY=change-me
       # - LIBARR_APPRISE_URLS=tgram://bot:chatid

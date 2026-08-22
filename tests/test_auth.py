@@ -43,6 +43,35 @@ def test_forced_auth_blocks_anonymous_api(raw_client):
     assert raw_client.get("/api/v1/health").status_code == 200
 
 
+def test_lan_bypass_uses_admin_without_credentials(raw_client, monkeypatch):
+    raw_client.post("/api/v1/auth/bootstrap", json={"username": "admin", "password": "hunter2!"})
+    raw_client.cookies.clear()
+    monkeypatch.setenv("LIBARR_LAN_AUTH_BYPASS", "true")
+    monkeypatch.setattr("libarr.api.auth._is_lan_host", lambda _host: True)
+
+    assert raw_client.get("/api/v1/books").status_code == 200
+    me = raw_client.get("/api/v1/auth/me")
+    assert me.status_code == 200
+    assert me.json()["username"] == "admin"
+
+
+def test_lan_bypass_does_not_trust_public_client(raw_client, monkeypatch):
+    raw_client.post("/api/v1/auth/bootstrap", json={"username": "admin", "password": "hunter2!"})
+    raw_client.cookies.clear()
+    monkeypatch.setenv("LIBARR_LAN_AUTH_BYPASS", "true")
+    monkeypatch.setattr("libarr.api.auth._is_lan_host", lambda _host: False)
+
+    assert raw_client.get("/api/v1/books").status_code == 401
+
+
+def test_auth_disabled_uses_admin_without_credentials(raw_client, monkeypatch):
+    raw_client.post("/api/v1/auth/bootstrap", json={"username": "admin", "password": "hunter2!"})
+    raw_client.cookies.clear()
+    monkeypatch.setenv("LIBARR_AUTH_ENABLED", "false")
+
+    assert raw_client.get("/api/v1/books").status_code == 200
+
+
 def test_login_sets_session_cookie_and_me_works(raw_client):
     raw_client.post("/api/v1/auth/bootstrap", json={"username": "admin", "password": "hunter2!"})
     raw_client.post("/api/v1/auth/login", json={"username": "admin", "password": "hunter2!"})

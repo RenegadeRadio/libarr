@@ -1,6 +1,7 @@
 """Authentication (plan Task 1.11): forced login, bootstrap admin, API keys.
 
-Three credential paths, in priority order:
+Credential paths, in priority order:
+0. Optional direct-LAN bypass (the first admin supplies request identity).
 1. Signed session cookie (the SPA).
 2. X-Api-Key header (scripts, integrations).
 3. HTTP Basic (OPDS e-readers — KOReader/Kobo support basic auth).
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import timedelta
+from ipaddress import ip_address, ip_network
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -37,6 +39,14 @@ _api_key_header = APIKeyHeader(name="X-Api-Key", auto_error=False)
 COOKIE_NAME = "libarr_session"
 SESSION_TTL = timedelta(days=30)
 _FALLBACK_SECRET = "libarr-insecure-dev-secret"
+_LAN_NETWORKS = (
+    ip_network("10.0.0.0/8"),
+    ip_network("172.16.0.0/12"),
+    ip_network("192.168.0.0/16"),
+    ip_network("127.0.0.0/8"),
+    ip_network("fc00::/7"),
+    ip_network("::1/128"),
+)
 
 
 def _secret() -> str:
@@ -63,6 +73,24 @@ def issue_api_key() -> str:
     return secrets.token_urlsafe(32)
 
 
+def _is_lan_host(host: str) -> bool:
+    """Accept direct private/loopback peers without trusting forwarding headers."""
+    try:
+        address = ip_address(host)
+    except ValueError:
+        return False
+    return any(address in network for network in _LAN_NETWORKS)
+
+
+def _bypass_user(request: Request, session: Session) -> User | None:
+    settings = Settings()
+    client_host = request.client.host if request.client is not None else ""
+    bypass = not settings.auth_enabled or (settings.lan_auth_bypass and _is_lan_host(client_host))
+    if not bypass:
+        return None
+    return session.scalars(select(User).where(User.role == "admin").order_by(User.id)).first()
+
+
 def create_session_token(user_id: int) -> str:
     return _serializer().dumps({"uid": user_id})
 
@@ -83,6 +111,10 @@ def get_current_user(
     api_key: Annotated[str | None, Depends(_api_key_header)],
 ) -> User | None:
     """Resolve the authenticated user from cookie / API key / basic auth."""
+    local_user = _bypass_user(request, session)
+    if local_user is not None:
+        return local_user
+
     token = request.cookies.get(COOKIE_NAME)
     if token:
         uid = read_session_token(token)

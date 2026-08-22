@@ -4,9 +4,11 @@ Handoff for a fresh session. Everything needed to understand, run, verify, and
 continue the project. Authoritative plan: `docs/implementation-plan.md`
 (mirrors `~/.hermes/plans/2026-08-19_011209-libarr-ebook-platform.md`).
 
-## Project state (2026-08-19)
+## Project state (2026-08-22)
 
-**Phases 1, 2, 2.5 complete + scheduler shipped. 214 tests passing, mypy + ruff clean, ~55 commits, tree clean, all pushed to `github.com/RenegadeRadio/libarr` (branch `main`).**
+**Phases 1–4 implemented, with 295 tests passing. The catalog can be migrated
+between instances with `libarr export` / `libarr import`; credentials and users
+are deliberately excluded from that portable archive.**
 
 - **Phase 1 — "Libarr Lite"**: models + FTS5, filename parser, library scan, matcher,
   3-hop Open Library metadata (edition → work → author) with stale-while-error
@@ -48,7 +50,7 @@ queued item ("Pride and Prejudice", queued autonomously by the scheduler).
 ## Verify
 
 ```bash
-uv run pytest -q          # 214 tests
+uv run pytest -q          # 295 tests
 uv run ruff check src tests migrations && uv run ruff format --check src tests migrations
 uv run mypy src
 ```
@@ -87,12 +89,14 @@ indexers (CRUD + /test), clients (CRUD + /test), queue triggers
 wanted/missing, wanted/cutoff, history, discovery, discovery-lists.
 OPDS 1.2 catalog at `/opds` (Basic auth). First run: POST /auth/bootstrap creates admin.
 
-## What's next (Phase 3 — ecosystem, 3–4 weeks per plan)
+## What's next
 
-Request UI (Overseerr-style), import lists (Goodreads/StoryGraph/OL shelf),
-conversion worker (`ebook-convert`), Kobo KEPUB + Send-to-Kindle,
-audiobooks/comics as media types. Pending small items: batch-search politeness
-in search-now, OPDS refresh after import, scheduler task locking for multi-instance.
+Provider health/status reporting and provider failure drills are the main
+operational hardening items. Ecosystem gaps are external import lists
+(Goodreads/StoryGraph/Open Library), per-user request limits, and RAR extraction.
+Smaller follow-ups: batch-search politeness, scheduler task locking for
+multi-instance deployments, frontend controls for path mappings and naming
+templates, PostgreSQL full-text parity, and a real frontend test suite.
 
 ## This-machine quirks (Arch/Hyprland)
 

@@ -332,7 +332,12 @@ Pinned libraries: `fastapi`, `uvicorn`, `sqlalchemy`, `alembic`, `pydantic-setti
 
 - [x] `dumps.py`: streaming, resumable OL dump ingestion (works/authors/editions → `dump_rows` + `dump_isbns` ISBN index); `libarr metadata-import --dump ...` CLI (self-migrating); provider-down fallback: ISBN lookups resolve fully offline through the mirror.
 - [ ] Provider health dashboard (API status, last-success, cache hit rate, per-provider error counts) in System UI — *operational transparency is the anti-Readarr feature*.
-- [ ] `libarr export/import` for metadata state (JSON/zip) so users can migrate instances.
+- [x] `libarr export/import` for portable metadata state (JSON/zip) so users can migrate
+  instances. Catalog/library metadata, discovery lists, provider cache, and the offline
+  mirror are included; credentials, users, queues, and download-client secrets are
+  deliberately excluded. Imports require an empty catalog unless `--replace` is passed;
+  replacement also clears queue, history, conversion, reading-progress, and shelf-link rows
+  that refer to the old catalog IDs.
 - [ ] Failure drills: tests that simulate provider-down (stale-while-error serves last-known payloads), provider-shape-change (schema drift tolerated via `metadata_json`), rate-limit storms.
 
 ### Phase 3 — Ecosystem polish (3–4 weeks)
